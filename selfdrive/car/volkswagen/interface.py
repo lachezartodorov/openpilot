@@ -3,7 +3,7 @@ from panda import Panda
 from openpilot.common.conversions import Conversions as CV
 from openpilot.selfdrive.car import get_safety_config
 from openpilot.selfdrive.car.interfaces import CarInterfaceBase
-from openpilot.selfdrive.car.volkswagen.values import CAR, PQ_CARS, CANBUS, NetworkLocation, TransmissionType, GearShifter
+from openpilot.selfdrive.car.volkswagen.values import CAR, PQ_CARS, CANBUS, NetworkLocation, TransmissionType, GearShifter, VolkswagenFlags
 
 ButtonType = car.CarState.ButtonEvent.Type
 EventName = car.CarEvent.EventName
@@ -66,6 +66,10 @@ class CarInterface(CarInterfaceBase):
         ret.networkLocation = NetworkLocation.gateway
       else:
         ret.networkLocation = NetworkLocation.fwdCamera
+
+      if car_fw is not None:
+        if not any(fw.ecu == 'fwdRadar' for fw in car_fw):
+          ret.flags |= VolkswagenFlags.PP_CAR.value
 
     # Global lateral tuning defaults, can be overridden per-vehicle
 

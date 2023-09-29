@@ -1,6 +1,6 @@
 from collections import defaultdict, namedtuple
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, IntFlag
 from typing import Dict, List, Union
 
 from cereal import car
@@ -103,6 +103,8 @@ class CarControllerParams:
         "laneAssistDeactivated": 10,          # "Lane Assist deactivated." silent with persistent icon afterward
       }
 
+class VolkswagenFlags(IntFlag):
+  PP_CAR = 1
 
 class CANBUS:
   pt = 0

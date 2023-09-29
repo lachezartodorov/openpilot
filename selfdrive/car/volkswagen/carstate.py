@@ -4,7 +4,7 @@ from openpilot.common.conversions import Conversions as CV
 from openpilot.selfdrive.car.interfaces import CarStateBase
 from opendbc.can.parser import CANParser
 from openpilot.selfdrive.car.volkswagen.values import DBC, CANBUS, PQ_CARS, NetworkLocation, TransmissionType, GearShifter, \
-                                            CarControllerParams
+                                            CarControllerParams, VolkswagenFlags
 
 
 class CarState(CarStateBase):
@@ -105,11 +105,14 @@ class CarState(CarStateBase):
     # braking release bits are set.
     # Refer to VW Self Study Program 890253: Volkswagen Driver Assistance
     # Systems, chapter on Front Assist with Braking: Golf Family for all MQB
-    ret.stockFcw = bool(ext_cp.vl["ACC_10"]["AWV2_Freigabe"])
-    ret.stockAeb = bool(ext_cp.vl["ACC_10"]["ANB_Teilbremsung_Freigabe"]) or bool(ext_cp.vl["ACC_10"]["ANB_Zielbremsung_Freigabe"])
+    if not self.CP.flags & VolkswagenFlags.PP_CAR:
+      ret.stockFcw = bool(ext_cp.vl["ACC_10"]["AWV2_Freigabe"])
+      ret.stockAeb = bool(ext_cp.vl["ACC_10"]["ANB_Teilbremsung_Freigabe"]) or bool(ext_cp.vl["ACC_10"]["ANB_Zielbremsung_Freigabe"])
 
     # Update ACC radar status.
-    self.acc_type = ext_cp.vl["ACC_06"]["ACC_Typ"]
+    if not self.CP.flags & VolkswagenFlags.PP_CAR:
+      self.acc_type = ext_cp.vl["ACC_06"]["ACC_Typ"]
+      ret.accType = self.acc_type
     if pt_cp.vl["TSK_06"]["TSK_Status"] == 2:
       # ACC okay and enabled, but not currently engaged
       ret.cruiseState.available = True
@@ -128,7 +131,7 @@ class CarState(CarStateBase):
 
     # Update ACC setpoint. When the setpoint is zero or there's an error, the
     # radar sends a set-speed of ~90.69 m/s / 203mph.
-    if self.CP.pcmCruise:
+    if self.CP.pcmCruise and not self.CP.flags & VolkswagenFlags.PP_CAR:
       ret.cruiseState.speed = ext_cp.vl["ACC_02"]["ACC_Wunschgeschw_02"] * CV.KPH_TO_MS
       if ret.cruiseState.speed > 90:
         ret.cruiseState.speed = 0
@@ -280,7 +283,8 @@ class CarState(CarStateBase):
 
     if CP.networkLocation == NetworkLocation.fwdCamera:
       # Radars are here on CANBUS.pt
-      messages += MqbExtraSignals.fwd_radar_messages
+      if not CP.flags & VolkswagenFlags.PP_CAR:
+        messages += MqbExtraSignals.fwd_radar_messages
       if CP.enableBsm:
         messages += MqbExtraSignals.bsm_radar_messages
 
@@ -300,7 +304,8 @@ class CarState(CarStateBase):
       ]
     else:
       # Radars are here on CANBUS.cam
-      messages += MqbExtraSignals.fwd_radar_messages
+      if not CP.flags & VolkswagenFlags.PP_CAR:
+        messages += MqbExtraSignals.fwd_radar_messages
       if CP.enableBsm:
         messages += MqbExtraSignals.bsm_radar_messages
 
