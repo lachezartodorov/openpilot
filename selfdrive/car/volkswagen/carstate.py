@@ -18,6 +18,7 @@ class CarState(CarStateBase):
     self.upscale_lead_car_signal = False
     self.eps_stock_values = False
     self.aEgoBremse = 0
+    self.MOB_Standby = 0
 
   def create_button_events(self, pt_cp, buttons):
     button_events = []
@@ -262,6 +263,10 @@ class CarState(CarStateBase):
     self.bremse8_stock = pt_cp.vl["Bremse_8"]
     self.bremse11_stock = pt_cp.vl["Bremse_11"]
 
+    self.BR8_StaBrSyst = pt_cp.vl["Bremse_8"]["BR8_StaBrSyst"]
+    self.MOB_StandbyLast = self.MOB_Standby
+    self.MOB_Standby = pt_cp.vl["Motor_Bremse"]["MOB_Standby"]
+
     # Update button states for turn signals and ACC controls, capture all ACC button state/config for passthrough
     ret.leftBlinker, ret.rightBlinker = ret.leftBlinkerOn, ret.rightBlinkerOn = self.update_blinker_from_stalk(300, pt_cp.vl["Gate_Komf_1"]["GK1_Blinker_li"],
                                                                                                                       pt_cp.vl["Gate_Komf_1"]["GK1_Blinker_re"])
@@ -359,6 +364,7 @@ class CarState(CarStateBase):
       ("Lenkhilfe_3", 100),  # From J500 Steering Assist with integrated sensors
       ("Lenkwinkel_1", 100),  # From J500 Steering Assist with integrated sensors
       ("Motor_3", 100),     # From J623 Engine control module
+      ("Motor_Bremse", 50),  # From J623 Engine control module
       ("Airbag_1", 50),     # From J234 Airbag control module
       ("Bremse_5", 50),     # From J104 ABS/ESP controller
       ("Bremse_8", 50),     # From J104 ABS/ESP controller

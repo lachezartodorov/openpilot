@@ -20,7 +20,8 @@ def limit_jerk(accel, prev_accel, max_jerk, dt):
   return prev_accel + delta_accel
 
 def EPB_handler(CS, self, ACS_Sta_ADR, ACS_Sollbeschl, vEgo, stopping):
-  if ACS_Sta_ADR == 1 and ACS_Sollbeschl < 0 and vEgo <= (18 * CV.KPH_TO_MS):
+  if (ACS_Sta_ADR == 1 and ACS_Sollbeschl < 0) and \
+    (CS.MOB_StandbyLast != CS.BR8_StaBrSyst or self.EPB_enable):
       if not self.EPB_enable:  # First frame of EPB entry
           self.EPB_counter = 0
           self.EPB_brake = 0
