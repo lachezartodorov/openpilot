@@ -19,6 +19,7 @@ class CarState(CarStateBase):
     self.eps_stock_values = False
     self.aEgoBremse = 0
     self.MOB_Standby = 0
+    self.BR8_Sta_Br_Druck = 0
 
   def create_button_events(self, pt_cp, buttons):
     button_events = []
@@ -34,9 +35,9 @@ class CarState(CarStateBase):
 
     return button_events
 
-  def update(self, pt_cp, cam_cp, ext_cp, trans_type):
+  def update(self, pt_cp, br_cp, cam_cp, ext_cp, trans_type):
     if self.CP.flags & VolkswagenFlags.PQ:
-      return self.update_pq(pt_cp, cam_cp, ext_cp, trans_type)
+      return self.update_pq(pt_cp, br_cp, cam_cp, ext_cp, trans_type)
 
     ret = car.CarState.new_message()
 
@@ -164,7 +165,7 @@ class CarState(CarStateBase):
     self.frame += 1
     return ret
 
-  def update_pq(self, pt_cp, cam_cp, ext_cp, trans_type):
+  def update_pq(self, pt_cp, br_cp, cam_cp, ext_cp, trans_type):
     ret = car.CarState.new_message()
 
     self.prev_mads_enabled = self.mads_enabled
@@ -263,9 +264,11 @@ class CarState(CarStateBase):
     self.bremse8_stock = pt_cp.vl["Bremse_8"]
     self.bremse11_stock = pt_cp.vl["Bremse_11"]
 
-    self.BR8_StaBrSyst = pt_cp.vl["Bremse_8"]["BR8_StaBrSyst"]
+    self.BR8_Sta_Br_DruckLast = self.BR8_Sta_Br_Druck
+    self.BR8_Sta_Br_Druck = br_cp.vl["Bremse_8"]["BR8_Sta_Br_Druck"]
+    self.BR8_StaBrSyst = br_cp.vl["Bremse_8"]["BR8_StaBrSyst"]
     self.MOB_StandbyLast = self.MOB_Standby
-    self.MOB_Standby = pt_cp.vl["Motor_Bremse"]["MOB_Standby"]
+    self.MOB_Standby = br_cp.vl["Motor_Bremse"]["MOB_Standby"]
 
     # Update button states for turn signals and ACC controls, capture all ACC button state/config for passthrough
     ret.leftBlinker, ret.rightBlinker = ret.leftBlinkerOn, ret.rightBlinkerOn = self.update_blinker_from_stalk(300, pt_cp.vl["Gate_Komf_1"]["GK1_Blinker_li"],
@@ -328,6 +331,10 @@ class CarState(CarStateBase):
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.pt)
 
   @staticmethod
+  def get_br_canparser(CP):
+    return CarState.get_br_can_parser_pq(CP)
+
+  @staticmethod
   def get_cam_can_parser(CP):
     if CP.flags & VolkswagenFlags.PQ:
       return CarState.get_cam_can_parser_pq(CP)
@@ -364,7 +371,6 @@ class CarState(CarStateBase):
       ("Lenkhilfe_3", 100),  # From J500 Steering Assist with integrated sensors
       ("Lenkwinkel_1", 100),  # From J500 Steering Assist with integrated sensors
       ("Motor_3", 100),     # From J623 Engine control module
-      ("Motor_Bremse", 50),  # From J623 Engine control module
       ("Airbag_1", 50),     # From J234 Airbag control module
       ("Bremse_5", 50),     # From J104 ABS/ESP controller
       ("Bremse_8", 50),     # From J104 ABS/ESP controller
@@ -389,6 +395,19 @@ class CarState(CarStateBase):
         messages += PqExtraSignals.bsm_radar_messages
 
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.pt)
+
+  @staticmethod
+  def get_br_can_parser_pq(CP):
+    messages = []
+
+    if CP.flags & VolkswagenFlags.PQ:
+      messages += [
+        # sig_address, frequency
+      ("Motor_Bremse", 50),  # From J623 Engine control module
+      ("Bremse_8", 50),      # From J104 ABS/ESP controller
+      ]
+
+    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.br)
 
   @staticmethod
   def get_cam_can_parser_pq(CP):
