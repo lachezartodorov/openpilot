@@ -39,7 +39,7 @@ def EPB_handler(CS, self, ACS_Sta_ADR, ACS_Sollbeschl, vEgo, stopping):
           self.EPB_brake = 0
           self.EPB_enable = 0
 
-  if CS.out.gasPressed or CS.out.brakePressed:
+  if CS.out.gasPressed or CS.out.brakePressed or CS.gra_stock_values["GRA_Abbrechen"]:
     if self.EPB_enable:
       self.ACC_anz_blind = 1
     self.EPB_brake = 0
