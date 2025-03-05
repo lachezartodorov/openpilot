@@ -18,9 +18,6 @@ class CarState(CarStateBase):
     self.upscale_lead_car_signal = False
     self.eps_stock_values = False
     self.aEgoBremse = 0
-    self.MOB_Standby = 0
-    self.MOB_interm = 0
-    self.BR8_Sta_Br_Druck = 0
 
   def create_button_events(self, pt_cp, buttons):
     button_events = []
@@ -265,11 +262,6 @@ class CarState(CarStateBase):
     self.bremse8_stock = pt_cp.vl["Bremse_8"]
     self.bremse11_stock = pt_cp.vl["Bremse_11"]
 
-    self.BR8_Sta_Br_DruckLast = self.BR8_Sta_Br_Druck
-    self.BR8_Sta_Br_Druck = br_cp.vl["Bremse_8"]["BR8_Sta_Br_Druck"]
-    self.BR8_StaBrSyst = br_cp.vl["Bremse_8"]["BR8_StaBrSyst"]
-    self.MOB_StandbyLast = self.MOB_interm
-    self.MOB_interm = self.MOB_Standby
     self.MOB_Standby = br_cp.vl["Motor_Bremse"]["MOB_Standby"]
 
     # Update button states for turn signals and ACC controls, capture all ACC button state/config for passthrough
