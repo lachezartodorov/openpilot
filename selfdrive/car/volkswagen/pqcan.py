@@ -202,6 +202,6 @@ def create_epb_control(packer, bus, apply_brake, epb_enabled):  # bus 1
     "EP1_Freigabe_Ver": 1 if epb_enabled else 0,            #Allow braking pressure to build.
     "EP1_Bremslicht": 1 if apply_brake != 0 else 0,         #Enable brake lights
     "EP1_HydrHalten": 1 if epb_enabled else 0,
-    "EP1_AutoHold_aktiv": 1,                                #Signal indicating EPB is available
+    "EP1_AutoHold_aktiv": 1 if epb_enabled else 0,          #Signal indicating EPB is available
   }
   return packer.make_can_msg("EPB_1", bus, values)
