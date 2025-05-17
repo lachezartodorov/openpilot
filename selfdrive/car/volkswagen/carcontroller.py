@@ -26,6 +26,7 @@ def EPB_handler(CS, self, ACS_Sta_ADR, ACS_Sollbeschl, vEgo, stopping):
           self.EPB_counter = 0
           self.EPB_brake = 0
           self.EPB_enable = 1
+          self.EPB_enable_history[0] = True  # set old frame to high on signal entry
           self.EPB_brake_last = ACS_Sollbeschl
       else:
           self.EPB_brake = limit_jerk(-4, self.EPB_brake_last, 0.7, 0.02) if stopping else ACS_Sollbeschl
@@ -43,8 +44,7 @@ def EPB_handler(CS, self, ACS_Sta_ADR, ACS_Sollbeschl, vEgo, stopping):
       self.ACC_anz_blind = 1
     self.EPB_brake = 0
     self.EPB_enable = 0
-    self.EPB_enable_prev = 0
-    self.EPB_enable_2old = 0
+    self.EPB_enable_history = [False, False, False]
 
   if self.ACC_anz_blind and self.ACC_anz_blind_counter < 150:
     self.ACC_anz_blind_counter += 1
@@ -53,9 +53,8 @@ def EPB_handler(CS, self, ACS_Sta_ADR, ACS_Sollbeschl, vEgo, stopping):
     self.ACC_anz_blind_counter = 0
 
   # Update EPB historical states and calculate EPB_active
-  self.EPB_active = int((self.EPB_enable_2old and not self.EPB_enable) or self.EPB_enable)
-  self.EPB_enable_2old = self.EPB_enable_prev
-  self.EPB_enable_prev = self.EPB_enable
+  self.EPB_active = int((self.EPB_enable_history[0] and not self.EPB_enable) or self.EPB_enable)
+  self.EPB_enable_history = self.EPB_enable_history[1:] + [self.EPB_enable]
 
   return self.EPB_enable, self.EPB_brake, self.EPB_active
 
@@ -84,8 +83,7 @@ class CarController(CarControllerBase):
     self.EPB_brake = 0
     self.EPB_brake_last = 0
     self.EPB_enable = 0
-    self.EPB_enable_prev = 0
-    self.EPB_enable_2old = 0
+    self.EPB_enable_history = [False, False, False]  # Oldest to newest
     self.EPB_active = 0
     self.EPB_counter = 0
     self.accel_diff = 0
