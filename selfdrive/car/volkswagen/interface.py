@@ -208,9 +208,6 @@ class CarInterface(CarInterfaceBase):
       if c.enabled and ret.vEgo < self.CP.minEnableSpeed:
         events.add(EventName.speedTooLow)
 
-    if self.CC.eps_timer_soft_disable_alert:
-      events.add(EventName.steerTimeLimit)
-
     ret.customStockLong = self.update_custom_stock_long()
 
     ret.events = events.to_msg()
