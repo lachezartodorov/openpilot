@@ -161,9 +161,9 @@ class CarController(CarControllerBase):
       # PLA_status definitions:
       #  8 = standby
       #  6 = active
-      #  4 = activatable, entry request signal
+      #  4 = activatable, entry request signal. 11 frames required
       if CC.latActive:
-        self.PLA_status = 6 if self.PLA_entryCounter >= 11 else 4
+        self.PLA_status = 6 if self.PLA_entryCounter >= 15 else 7 if self.PLA_entryCounter <= 4 else 4
         self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 32 else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 32 else self.PLA_entryCounter
       else:
