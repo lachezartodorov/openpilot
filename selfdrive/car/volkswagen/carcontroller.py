@@ -163,7 +163,7 @@ class CarController(CarControllerBase):
       #  6 = active
       #  4 = activatable, entry request signal. 11 frames required
       if CC.latActive:
-        self.PLA_status = 6 if self.PLA_entryCounter >= 15 else 7 if self.PLA_entryCounter <= 4 else 4
+        self.PLA_status = 6 if self.PLA_entryCounter >= 15 else 7 if self.PLA_entryCounter < 4 else 4
         self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 36 else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 36 else self.PLA_entryCounter
       else:
