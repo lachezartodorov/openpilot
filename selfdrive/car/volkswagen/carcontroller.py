@@ -78,6 +78,7 @@ class CarController(CarControllerBase):
     self.PLA_ESP_status = 0
     self.PLA_entryCounter = 0
     self.CSsteeringAngleDegLast = 0
+    self.CSLH3_SignLast = 0
     self.last_button_frame = 0
     self.accel_last = 0
     self.frame = 0
@@ -164,7 +165,7 @@ class CarController(CarControllerBase):
       #  4 = activatable, entry request signal. 11 frames required
       if CC.latActive:
         self.PLA_status = 6 if self.PLA_entryCounter >= 15 else 7 if self.PLA_entryCounter < 4 else 4
-        self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 36 else 4
+        self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 36 else 8 if self.PLA_entryCounter < 4 else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 36 else self.PLA_entryCounter
       else:
         self.PLA_status = 8
@@ -176,7 +177,8 @@ class CarController(CarControllerBase):
 
       self.apply_angle_last = apply_angle
       self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
-      can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_status, self.PLA_ESP_status, CS.LH_3_Sign))
+      can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_status, self.PLA_ESP_status, self.CSLH3_SignLast))
+      self.CSLH3_SignLast = CS.LH_3_Sign
 
       if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
         # Pacify VW Emergency Assist driver inactivity detection by changing its view of driver steering input torque
