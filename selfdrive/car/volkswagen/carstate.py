@@ -263,6 +263,8 @@ class CarState(CarStateBase):
     self.motor2_stock = pt_cp.vl["Motor_2"]
     self.bremse8_stock = pt_cp.vl["Bremse_8"]
     self.bremse11_stock = pt_cp.vl["Bremse_11"]
+    self.LH2_steeringState = pt_cp.vl["Lenkhilfe_2"]["LH2_aktLenkeingriff"]
+    self.LH2_Abbr = pt_cp.vl["Lenkhilfe_2"]["LH2_PLA_Abbr"]
 
     self.MOB_Standby = br_cp.vl["Motor_Bremse"]["MOB_Standby"]
 

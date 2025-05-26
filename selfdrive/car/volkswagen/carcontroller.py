@@ -77,6 +77,7 @@ class CarController(CarControllerBase):
     self.PLA_status = 0
     self.PLA_ESP_status = 0
     self.PLA_entryCounter = 0
+    self.PLA_driverExit = False
     self.CSsteeringAngleDegLast = 0
     self.CSLH3_SignLast = 0
     self.last_button_frame = 0
@@ -168,10 +169,15 @@ class CarController(CarControllerBase):
         self.PLA_status = 6 if self.PLA_entryCounter >= (11 + self.entryDelay) else 7 if self.PLA_entryCounter < self.entryDelay else 4
         self.PLA_ESP_status = 6 if self.PLA_entryCounter >= (32 + self.entryDelay) else 8 if self.PLA_entryCounter < self.entryDelay else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= (32 + self.entryDelay) else self.PLA_entryCounter
+        if CS.LH2_Abbr == 2:
+          self.PLA_driverExit = True
+        if CS.LH2_steeringState != 64 and not self.PLA_driverExit and self.PLA_entryCounter >= (30 + self.entryDelay):
+          self.PLA_entryCounter = self.entryDelay
       else:
         self.PLA_status = 8
         self.PLA_ESP_status = 8
         self.PLA_entryCounter = 0
+        self.PLA_driverExit = False
 
       apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
         if CC.latActive and self.PLA_status == 6 else self.CSsteeringAngleDegLast
