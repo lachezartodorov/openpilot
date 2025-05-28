@@ -164,15 +164,14 @@ class CarController(CarControllerBase):
       #  8 = standby
       #  6 = active
       #  4 = activatable, entry request signal. 11 frames required
-      self.entryDelay = 16
       if CC.latActive:
-        self.PLA_status = 6 if self.PLA_entryCounter >= (11 + self.entryDelay) else 7 if self.PLA_entryCounter < self.entryDelay else 4
-        self.PLA_ESP_status = 6 if self.PLA_entryCounter >= (32 + self.entryDelay) else 8 if self.PLA_entryCounter < self.entryDelay else 4
-        self.PLA_entryCounter += 1 if self.PLA_entryCounter <= (32 + self.entryDelay) else self.PLA_entryCounter
+        self.PLA_status = 6 if self.PLA_entryCounter >= 11 else 4
+        self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 32 else 4
+        self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 32 else self.PLA_entryCounter
         if CS.LH2_Abbr == 2:
           self.PLA_driverExit = True
-        if CS.LH2_steeringState != 64 and not self.PLA_driverExit and self.PLA_entryCounter >= (30 + self.entryDelay):
-          self.PLA_entryCounter = self.entryDelay
+        if CS.LH2_steeringState != 64 and not self.PLA_driverExit and self.PLA_entryCounter >= 30:
+          self.PLA_entryCounter = 0
       else:
         self.PLA_status = 8
         self.PLA_ESP_status = 8
