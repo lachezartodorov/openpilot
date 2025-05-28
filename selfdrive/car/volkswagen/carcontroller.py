@@ -159,24 +159,27 @@ class CarController(CarControllerBase):
 
     # **** Steering Controls ************************************************ #
 
+    if CS.LH2_Abbr == 2 or (self.PLA_driverExit and CS.out.cruiseState.available):
+      self.PLA_driverExit = True
+    else:
+      self.PLA_driverExit = False
+
     if self.frame % self.CCP.STEER_STEP == 0:
       # PLA_status definitions:
       #  8 = standby
       #  6 = active
       #  4 = activatable, entry request signal. 11 frames required
-      if CC.latActive:
+      if CC.latActive and not self.PLA_driverExit:
         self.PLA_status = 6 if self.PLA_entryCounter >= 11 else 4
         self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 32 else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 32 else self.PLA_entryCounter
-        if CS.LH2_Abbr == 2:
-          self.PLA_driverExit = True
-        if CS.LH2_steeringState != 64 and not self.PLA_driverExit and self.PLA_entryCounter >= 30:
+        # retry entry until engagement. TODO: add a counter to disable if this takes too long? (error)
+        if CS.LH2_steeringState != 64 and self.PLA_entryCounter >= 30:
           self.PLA_entryCounter = 0
       else:
         self.PLA_status = 8
         self.PLA_ESP_status = 8
         self.PLA_entryCounter = 0
-        self.PLA_driverExit = False
 
       apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
         if CC.latActive and self.PLA_status == 6 else self.CSsteeringAngleDegLast
