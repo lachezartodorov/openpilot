@@ -78,6 +78,7 @@ class CarController(CarControllerBase):
     self.PLA_ESP_status = 0
     self.PLA_entryCounter = 0
     self.PLA_driverExit = False
+    self.PLA_driverExit_last = False
     self.CSsteeringAngleDegLast = 0
     self.CSLH3_SignLast = 0
     self.last_button_frame = 0
@@ -159,13 +160,14 @@ class CarController(CarControllerBase):
 
     # **** Steering Controls ************************************************ #
 
-    if CS.LH2_Abbr == 2 or (self.PLA_driverExit and CS.out.cruiseState.available):
+    if CS.LH2_Abbr == 2 and CS.out.cruiseState.available:
       self.PLA_driverExit = True
     else:
       self.PLA_driverExit = False
 
     if self.frame % self.CCP.STEER_STEP == 0:
       # PLA_status definitions:
+      #  9 = reset EPS driver torque override flag
       #  8 = standby
       #  6 = active
       #  4 = activatable, entry request signal. 11 frames required
@@ -177,9 +179,10 @@ class CarController(CarControllerBase):
         if CS.LH2_steeringState != 64 and self.PLA_entryCounter >= 30:
           self.PLA_entryCounter = 0
       else:
-        self.PLA_status = 8
+        self.PLA_status = 9 if self.PLA_driverExit_last and not self.PLA_driverExit else 8  # pulse reset on falling edge
         self.PLA_ESP_status = 8
         self.PLA_entryCounter = 0
+        self.PLA_driverExit_last = self.PLA_driverExit
 
       apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
         if CC.latActive and self.PLA_status == 6 else self.CSsteeringAngleDegLast
