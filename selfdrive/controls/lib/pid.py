@@ -57,7 +57,7 @@ class PIDController:
     self.d = error_rate * self.k_d
 
     if override:
-      self.i = 0
+      self.i -= self.i_unwind_rate * float(np.sign(self.i))
     else:
       i = self.i + error * self.k_i * self.i_rate
       control = self.p + i + self.d + self.f
