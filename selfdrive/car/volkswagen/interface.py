@@ -118,7 +118,7 @@ class CarInterface(CarInterfaceBase):
       ret.lateralTuning.init('pid')
       ret.lateralTuning.pid.kpBP = [0., 20.]
       ret.lateralTuning.pid.kiBP = [0., 20.]
-      ret.lateralTuning.pid.kpV = [0.01, 0.]
+      ret.lateralTuning.pid.kpV = [0.001, 0.]
       ret.lateralTuning.pid.kiV = [0.001, 0.001]
     else:
       ret.steerActuatorDelay = 0.1
