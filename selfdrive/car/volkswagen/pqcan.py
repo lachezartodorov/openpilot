@@ -10,7 +10,7 @@ def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status
 
   return packer.make_can_msg("PLA_1", bus, values)
 
-def create_steering_control(packer, bus, apply_steer, lkas_enabled):
+def HCA(packer, bus, apply_steer, lkas_enabled):
   values = {
     "LM_Offset": 0,
     "LM_OffSign": 0,
