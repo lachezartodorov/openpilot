@@ -44,15 +44,10 @@ class CarState(CarStateBase):
     self.prev_mads_enabled = self.mads_enabled
 
     if self.CP.flags & VolkswagenFlags.MLB:
-      pt_cp.vl["ESP_19"]["ESP_VL_Radgeschw_02"],
       # MLB platform specific signals
-      pt_cp.vl["ESP_19"]["ESP_VR_Radgeschw_02"],
       ret.wheelSpeeds = self.get_wheel_speeds(
-      pt_cp.vl["ESP_19"]["ESP_HL_Radgeschw_02"],
         pt_cp.vl["ESP_03"]["ESP_VL_Radgeschw"],
-      pt_cp.vl["ESP_19"]["ESP_HR_Radgeschw_02"],
         pt_cp.vl["ESP_03"]["ESP_VR_Radgeschw"],
-    )
         pt_cp.vl["ESP_03"]["ESP_HL_Radgeschw"],
         pt_cp.vl["ESP_03"]["ESP_HR_Radgeschw"],
       )
@@ -145,14 +140,6 @@ class CarState(CarStateBase):
 
     # Common MLB/MQB signal handling
 
-    # Update vehicle speed and acceleration from ABS wheel speeds.
-    ret.wheelSpeeds = self.get_wheel_speeds(
-      pt_cp.vl["ESP_19"]["ESP_VL_Radgeschw_02"],
-      pt_cp.vl["ESP_19"]["ESP_VR_Radgeschw_02"],
-      pt_cp.vl["ESP_19"]["ESP_HL_Radgeschw_02"],
-      pt_cp.vl["ESP_19"]["ESP_HR_Radgeschw_02"],
-    )
-
     ret.vEgoRaw = float(np.mean([ret.wheelSpeeds.fl, ret.wheelSpeeds.fr, ret.wheelSpeeds.rl, ret.wheelSpeeds.rr]))
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
     ret.standstill = ret.vEgoRaw == 0
@@ -191,7 +178,7 @@ class CarState(CarStateBase):
 
     # Update ACC setpoint. When the setpoint is zero or there's an error, the
     # radar sends a set-speed of ~90.69 m/s / 203mph.
-    if self.CP.pcmCruise and not self.CP.spFlags & VolkswagenFlagsSP.SP_CC_ONLY_NO_RADAR:
+    if self.CP.pcmCruise and not self.CP.flags & VolkswagenFlags.MLB and not self.CP.spFlags & VolkswagenFlagsSP.SP_CC_ONLY_NO_RADAR:
       ret.cruiseState.speed = ext_cp.vl["ACC_02"]["ACC_Wunschgeschw_02"] * CV.KPH_TO_MS
       if ret.cruiseState.speed > 90:
         ret.cruiseState.speed = 0
@@ -402,7 +389,7 @@ class CarState(CarStateBase):
 
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam)
 
-    @staticmethod
+  @staticmethod
   def get_can_parser_mlb(CP):
     messages = [
       # sig_address, frequency
@@ -426,6 +413,21 @@ class CarState(CarStateBase):
     # TODO: BSM parsing
 
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.pt)
+
+  @staticmethod
+  def get_cam_can_parser_mlb(CP):
+    messages = []
+
+    if CP.networkLocation == NetworkLocation.fwdCamera:
+      messages += [
+        # sig_address, frequency
+        ("LDW_02", 10),     # From R242 Driver assistance camera
+      ]
+    else:
+      if CP.enableBsm:
+        messages += MqbExtraSignals.bsm_radar_messages  # FIXME: switch this to MlbExtraSignals later
+
+    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam)
 
   @staticmethod
   def get_can_parser_pq(CP):
