@@ -178,13 +178,14 @@ class CarController(CarControllerBase):
       #  8 = standby
       #  6 = active
       #  4 = activatable, entry request signal. 11 frames required
-      if CC.latActive and not self.PLA_driverExit:
+      #if CC.latActive and not self.PLA_driverExit:
+      if CC.latActive
         self.PLA_status = 6 if self.PLA_entryCounter >= 11 else 4
         self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 32 else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 32 else self.PLA_entryCounter
         # retry entry until engagement. TODO: add a counter to disable if this takes too long? (error)
-        if CS.LH2_steeringState != 64 and self.PLA_entryCounter >= 30:
-          self.PLA_entryCounter = 0
+        #if CS.LH2_steeringState != 64 and self.PLA_entryCounter >= 30:
+        #  self.PLA_entryCounter = 0
       else:
         self.PLA_status = 9 if self.PLA_driverExit_last and not self.PLA_driverExit else 8  # pulse reset on falling edge
         self.PLA_ESP_status = 8
