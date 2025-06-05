@@ -1,11 +1,11 @@
 def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status, LH_3_Sign):
   values = {
-    "PL1_Status_EPS": PLA_status,
-    "PL1_ArcAngleReq": abs(apply_angle),
-    "PL1_AngleReqSign": (1 if apply_angle < 0 else 0) if PLA_status == 6 else LH_3_Sign,
-    "PL1_Stat_PLA_ESP": PLA_ESP_status,
-    "PL1_Bremsmoment": 0,
-    "PL1_void": 0,
+    "PLA_Status_PLA_EPS": PLA_status,
+    "PLA_LW_Soll": int(abs(apply_angle) * 10),
+    "PLA_LW_Soll_sign": (1 if apply_angle < 0 else 0) if PLA_status == 6 else LH_3_Sign,
+    "PLA_Status_PLA_ESP": PLA_ESP_status,
+    "PLA_Bremsmoment": 0,
+    "PLA_void": 0,
   }
 
   return packer.make_can_msg("PLA_1", bus, values)
