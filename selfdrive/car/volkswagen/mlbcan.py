@@ -1,13 +1,14 @@
-def create_steering_control(packer, bus, apply_steer, lkas_enabled):
+def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status, LH_3_Sign):
   values = {
-    "HCA_01_Status_HCA": 5 if lkas_enabled else 3,
-    "HCA_01_LM_Offset": abs(apply_steer),
-    "HCA_01_LM_OffSign": 1 if apply_steer < 0 else 0,
-    "HCA_01_Vib_Freq": 18,
-    "HCA_01_Sendestatus": 1 if lkas_enabled else 0,
-    "EA_ACC_Wunschgeschwindigkeit": 327.36,
+    "PL1_Status_EPS": PLA_status,
+    "PL1_ArcAngleReq": abs(apply_angle),
+    "PL1_AngleReqSign": (1 if apply_angle < 0 else 0) if PLA_status == 6 else LH_3_Sign,
+    "PL1_Stat_PLA_ESP": PLA_ESP_status,
+    "PL1_Bremsmoment": 0,
+    "PL1_void": 0,
   }
-  return packer.make_can_msg("HCA_01", bus, values)
+
+  return packer.make_can_msg("PLA_1", bus, values)
 
 
 def create_lka_hud_control(packer, bus, ldw_stock_values, enabled, steering_pressed, hud_alert, hud_control):
