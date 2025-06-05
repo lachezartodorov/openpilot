@@ -8,7 +8,7 @@ def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status
     "PLA_void": 0,
   }
 
-  return packer.make_can_msg("PLA_1", bus, values)
+  return packer.make_can_msg("PLA_01", bus, values)
 
 def HCA(packer, bus, apply_steer, lkas_enabled):
   values = {
