@@ -167,10 +167,10 @@ class CarController(CarControllerBase):
 
     # **** Steering Controls ************************************************ #
 
-    if CS.LH2_Abbr == 2 and CS.out.cruiseState.available:
-      self.PLA_driverExit = True
-    else:
-      self.PLA_driverExit = False
+    #if CS.LH2_Abbr == 2 and CS.out.cruiseState.available:
+    #  self.PLA_driverExit = True
+    #else:
+    #  self.PLA_driverExit = False
 
     if self.frame % self.CCP.STEER_STEP == 0:
       # PLA_status definitions:
@@ -299,14 +299,15 @@ class CarController(CarControllerBase):
           self.last_cruise_button = self.cruise_button
 
     # **** Blinding Motor_2 for PQ radar ************ #
-    if VolkswagenFlags.PQ and self.ext_bus == CANBUS.cam and self.CP.openpilotLongitudinalControl:
+    if (self.CP.flags & VolkswagenFlags.PQ) and self.ext_bus == CANBUS.cam and self.CP.openpilotLongitudinalControl:
       if self.frame % 2 or CS.motor2_stock != getattr(self, 'motor2_last', CS.motor2_stock):  # 50hz / 20ms
         can_sends.append(self.CCS.create_motor2_control(self.packer_pt, CANBUS.cam, CS.motor2_stock))
       self.motor2_last = CS.motor2_stock
 
     # *** Below here is for OEM+ behavior modification of OEM ACC *** #
     # Modify Motor_2, Bremse_8, Bremse_11
-    if VolkswagenFlags.PQ and not self.CP.openpilotLongitudinalControl:
+
+    if (self.CP.flags & VolkswagenFlags.PQ) and not self.CP.openpilotLongitudinalControl:
       self.stopping = CS.acc_sys_stock["ACS_Anhaltewunsch"] and (CS.out.vEgoRaw <= 2 or self.stopping)
       self.stopped = self.EPB_enable and (CS.out.vEgoRaw == 0 or (self.stopping and self.stopped))
 
