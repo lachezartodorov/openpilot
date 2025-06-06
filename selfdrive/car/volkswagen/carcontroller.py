@@ -192,8 +192,14 @@ class CarController(CarControllerBase):
         self.PLA_entryCounter = 0
         self.PLA_driverExit_last = self.PLA_driverExit
 
+        # *** LOGGING *** #
+        print(f"[DEBUG] Frame: {self.frame} | latActive: {CC.latActive} | PLA_status: {self.PLA_status} | PLA_ESP_status: {self.PLA_ESP_status} | PLA_entryCounter: {self.PLA_entryCounter}")
+
+
       apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
         if CC.latActive and self.PLA_status == 6 else self.CSsteeringAngleDegLast
+        
+        print(f"[DEBUG] apply_angle (°): {apply_angle}")
 
       self.apply_angle_last = apply_angle
       self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
@@ -258,7 +264,7 @@ class CarController(CarControllerBase):
       hud_alert = 0
       if hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw):
         hud_alert = self.CCP.LDW_MESSAGES["laneAssistTakeOver"]
-      can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, CANBUS.pt, CS.ldw_stock_values, (CC.latActive and CS.LH2_steeringState == 64),
+      can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, CANBUS.pt, CS.ldw_stock_values, CC.latActive,
                                                        CS.out.steeringPressed, hud_alert, hud_control))
 
     if self.frame % self.CCP.ACC_HUD_STEP == 0 and self.CP.openpilotLongitudinalControl:
