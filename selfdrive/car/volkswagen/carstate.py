@@ -41,7 +41,7 @@ class CarState(CarStateBase):
 
     self.prev_mads_enabled = self.mads_enabled
 
-     if self.CP.flags & VolkswagenFlags.MLB:
+    if self.CP.flags & VolkswagenFlags.MLB:
       # MLB platform specific signals
       ret.wheelSpeeds = self.get_wheel_speeds(
         pt_cp.vl["ESP_03"]["ESP_VL_Radgeschw"],
