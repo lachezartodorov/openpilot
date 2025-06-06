@@ -193,13 +193,13 @@ class CarController(CarControllerBase):
         self.PLA_driverExit_last = self.PLA_driverExit
 
         # *** LOGGING *** #
-        print(f"[DEBUG] Frame: {self.frame} | latActive: {CC.latActive} | PLA_status: {self.PLA_status} | PLA_ESP_status: {self.PLA_ESP_status} | PLA_entryCounter: {self.PLA_entryCounter}")
+        #print(f"[DEBUG] Frame: {self.frame} | latActive: {CC.latActive} | PLA_status: {self.PLA_status} | PLA_ESP_status: {self.PLA_ESP_status} | PLA_entryCounter: {self.PLA_entryCounter}")
 
 
       apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
         if CC.latActive and self.PLA_status == 6 else self.CSsteeringAngleDegLast
-        
-        print(f"[DEBUG] apply_angle (°): {apply_angle}")
+
+      #print(f"[DEBUG] apply_angle (°): {apply_angle}")
 
       self.apply_angle_last = apply_angle
       self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
