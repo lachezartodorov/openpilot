@@ -7,10 +7,10 @@ def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status
     "PLA_Bremsmoment": 0,
     "PLA_Bremsverzoegerung": 0,
     "PLA_Anf_Bremsverzoegerung": 0,
-    "PLA_BremsMom_Verzoeg": 0,
+    "PLA_BremsMom_Verzoeg": 1,
     "PLA_Anhalten": 0,
     "PLA_Anhalteweg": 0,
-    "PLA_01_Signal_red_cyclic": 0,
+    "PLA_01_Signal_red_cyclic": 1,
   }
 
   return packer.make_can_msg("PLA_01", bus, values)
