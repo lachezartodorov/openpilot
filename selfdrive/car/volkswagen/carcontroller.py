@@ -136,86 +136,89 @@ class CarController(CarControllerBase):
 
   def update(self, CC, CS, now_nanos):
     if not self.CP.pcmCruiseSpeed:
-      self.sm.update(0)
+        self.sm.update(0)
 
-      if self.sm.updated['longitudinalPlanSP']:
-        self.v_tsc_state = self.sm['longitudinalPlanSP'].visionTurnControllerState
-        self.slc_state = self.sm['longitudinalPlanSP'].speedLimitControlState
-        self.m_tsc_state = self.sm['longitudinalPlanSP'].turnSpeedControlState
-        self.speed_limit = self.sm['longitudinalPlanSP'].speedLimit
-        self.speed_limit_offset = self.sm['longitudinalPlanSP'].speedLimitOffset
-        self.v_tsc = self.sm['longitudinalPlanSP'].visionTurnSpeed
-        self.m_tsc = self.sm['longitudinalPlanSP'].turnSpeed
+        if self.sm.updated['longitudinalPlanSP']:
+            self.v_tsc_state = self.sm['longitudinalPlanSP'].visionTurnControllerState
+            self.slc_state = self.sm['longitudinalPlanSP'].speedLimitControlState
+            self.m_tsc_state = self.sm['longitudinalPlanSP'].turnSpeedControlState
+            self.speed_limit = self.sm['longitudinalPlanSP'].speedLimit
+            self.speed_limit_offset = self.sm['longitudinalPlanSP'].speedLimitOffset
+            self.v_tsc = self.sm['longitudinalPlanSP'].visionTurnSpeed
+            self.m_tsc = self.sm['longitudinalPlanSP'].turnSpeed
 
-      self.v_cruise_min = VOLKSWAGEN_V_CRUISE_MIN[CS.params_list.is_metric] * (CV.KPH_TO_MPH if not CS.params_list.is_metric else 1)
+        self.v_cruise_min = VOLKSWAGEN_V_CRUISE_MIN[CS.params_list.is_metric] * (CV.KPH_TO_MPH if not CS.params_list.is_metric else 1)
+
     actuators = CC.actuators
     hud_control = CC.hudControl
     can_sends = []
 
     if not self.CP.pcmCruiseSpeed:
-      if not self.last_speed_limit_sign_tap_prev and CS.params_list.last_speed_limit_sign_tap:
-        self.sl_force_active_timer = self.frame
-        self.param_s.put_bool_nonblocking("LastSpeedLimitSignTap", False)
-      self.last_speed_limit_sign_tap_prev = CS.params_list.last_speed_limit_sign_tap
+        if not self.last_speed_limit_sign_tap_prev and CS.params_list.last_speed_limit_sign_tap:
+            self.sl_force_active_timer = self.frame
+            self.param_s.put_bool_nonblocking("LastSpeedLimitSignTap", False)
+        self.last_speed_limit_sign_tap_prev = CS.params_list.last_speed_limit_sign_tap
 
-      sl_force_active = CS.params_list.speed_limit_control_enabled and (self.frame < (self.sl_force_active_timer * DT_CTRL + 2.0))
-      sl_inactive = not sl_force_active and (not CS.params_list.speed_limit_control_enabled or (True if self.slc_state == 0 else False))
-      sl_temp_inactive = not sl_force_active and (CS.params_list.speed_limit_control_enabled and (True if self.slc_state == 1 else False))
-      slc_active = not sl_inactive and not sl_temp_inactive
+        sl_force_active = CS.params_list.speed_limit_control_enabled and (self.frame < (self.sl_force_active_timer * DT_CTRL + 2.0))
+        sl_inactive = not sl_force_active and (not CS.params_list.speed_limit_control_enabled or (True if self.slc_state == 0 else False))
+        sl_temp_inactive = not sl_force_active and (CS.params_list.speed_limit_control_enabled and (True if self.slc_state == 1 else False))
+        slc_active = not sl_inactive and not sl_temp_inactive
 
-      self.slc_active_stock = slc_active
+        self.slc_active_stock = slc_active
 
     # **** Steering Controls ************************************************ #
 
-    #if CS.LH2_Abbr == 2 and CS.out.cruiseState.available:
-    #  self.PLA_driverExit = True
-    #else:
-    #  self.PLA_driverExit = False
-
-    if self.frame % self.CCP.STEER_STEP == 0:
-      # PLA_status definitions:
-      #  9 = reset EPS driver torque override flag
-      #  8 = standby
-      #  6 = active
-      #  4 = activatable, entry request signal. 11 frames required
-      #if CC.latActive and not self.PLA_driverExit:
-      if CC.latActive:
+    if CC.latActive:
         self.PLA_status = 6 if self.PLA_entryCounter >= 11 else 4
         self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 32 else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 32 else self.PLA_entryCounter
-        # retry entry until engagement. TODO: add a counter to disable if this takes too long? (error)
-        #if CS.LH2_steeringState != 64 and self.PLA_entryCounter >= 30:
-        #  self.PLA_entryCounter = 0
-      else:
-        self.PLA_status = 9 if self.PLA_driverExit_last and not self.PLA_driverExit else 8  # pulse reset on falling edge
+    else:
+        self.PLA_status = 9 if self.PLA_driverExit_last and not self.PLA_driverExit else 8
         self.PLA_ESP_status = 8
         self.PLA_entryCounter = 0
         self.PLA_driverExit_last = self.PLA_driverExit
 
-        # *** LOGGING *** #
-        #print(f"[DEBUG] Frame: {self.frame} | latActive: {CC.latActive} | PLA_status: {self.PLA_status} | PLA_ESP_status: {self.PLA_ESP_status} | PLA_entryCounter: {self.PLA_entryCounter}")
+    # Frequentie-aanpassing: 50Hz voor status 4 of 6, 1Hz voor status 8
+    send_pla = False
+    if self.PLA_status in (4, 6):
+        send_pla = (self.frame % 2) == 0  # 50Hz
+    elif self.PLA_status == 8:
+        send_pla = (self.frame % 100) == 0  # 1Hz
 
+    if send_pla:
+        apply_angle = apply_std_steer_angle_limits(
+            actuators.steeringAngleDeg,
+            self.apply_angle_last,
+            CS.out.vEgo,
+            CarControllerParams
+        ) if CC.latActive and self.PLA_status == 6 else self.CSsteeringAngleDegLast
 
-      apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
-        if CC.latActive and self.PLA_status == 6 else self.CSsteeringAngleDegLast
+        self.apply_angle_last = apply_angle
+        self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
 
-      #print(f"[DEBUG] apply_angle (°): {apply_angle}")
+        can_sends.append(self.CCS.create_steering_control(
+            self.packer_pt,
+            CANBUS.br,
+            apply_angle,
+            self.PLA_status,
+            self.PLA_ESP_status,
+            self.CSLH3_SignLast
+        ))
 
-      self.apply_angle_last = apply_angle
-      self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
-      can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_status, self.PLA_ESP_status, self.CSLH3_SignLast))
-      can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, False, False))
-      self.CSLH3_SignLast = CS.LH_3_Sign
+        can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, False, False))
+        self.CSLH3_SignLast = CS.LH_3_Sign
 
-      if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
-        # Pacify VW Emergency Assist driver inactivity detection by changing its view of driver steering input torque
-        # to the greatest of actual driver input or 2x openpilot's output (1x openpilot output is not enough to
-        # consistently reset inactivity detection on straight level roads). See commaai/openpilot#23274 for background.
-        ea_simulated_torque = clip(apply_steer * 2, -self.CCP.STEER_MAX, self.CCP.STEER_MAX)
-        if abs(CS.out.steeringTorque) > abs(ea_simulated_torque):
-          ea_simulated_torque = CS.out.steeringTorque
-        can_sends.append(self.CCS.create_eps_update(self.packer_pt, CANBUS.cam, CS.eps_stock_values, ea_simulated_torque))
-
+        if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
+            apply_steer = int(apply_angle * self.CCP.STEER_MAX / 90)
+            ea_simulated_torque = clip(apply_steer * 2, -self.CCP.STEER_MAX, self.CCP.STEER_MAX)
+            if abs(CS.out.steeringTorque) > abs(ea_simulated_torque):
+                ea_simulated_torque = CS.out.steeringTorque
+            can_sends.append(self.CCS.create_eps_update(
+                self.packer_pt,
+                CANBUS.cam,
+                CS.eps_stock_values,
+                ea_simulated_torque
+            ))
     # **** Acceleration Controls ******************************************** #
 
     if self.frame % self.CCP.ACC_CONTROL_STEP == 0 and self.CP.openpilotLongitudinalControl:
