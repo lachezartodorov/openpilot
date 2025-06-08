@@ -169,21 +169,24 @@ class CarController(CarControllerBase):
     # **** Steering Controls ************************************************ #
 
     if CC.latActive:
-        self.PLA_status = 6 if self.PLA_entryCounter >= 11 else 4
+        # Status 6 = active; PLA_entryCounter counts up to 11 and then stays at 6
+        self.PLA_status = 6
         self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 32 else 4
-        self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 32 else self.PLA_entryCounter
+        self.PLA_entryCounter = min(self.PLA_entryCounter + 1, 32)
     else:
+        # Status 8 = driver exit / end
         self.PLA_status = 9 if self.PLA_driverExit_last and not self.PLA_driverExit else 8
         self.PLA_ESP_status = 8
         self.PLA_entryCounter = 0
         self.PLA_driverExit_last = self.PLA_driverExit
 
-    # Frequentie-aanpassing: 50Hz voor status 4 of 6, 1Hz voor status 8
+    # Variable frequency per status
     send_pla = False
-    if self.PLA_status in (4, 6):
-        send_pla = (self.frame % 2) == 0  # 50Hz
+    if self.PLA_status in (1, 6, 10):
+        send_pla = (self.frame % 2) == 0   # 50Hz
     elif self.PLA_status == 8:
         send_pla = (self.frame % 100) == 0  # 1Hz
+
 
     if send_pla:
         apply_angle = apply_std_steer_angle_limits(
@@ -204,62 +207,6 @@ class CarController(CarControllerBase):
             self.PLA_ESP_status,
             self.CSLH3_SignLast
         ))
-
-        can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, False, False))
-        self.CSLH3_SignLast = CS.LH_3_Sign
-
-        if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
-            apply_steer = int(apply_angle * self.CCP.STEER_MAX / 90)
-            ea_simulated_torque = clip(apply_steer * 2, -self.CCP.STEER_MAX, self.CCP.STEER_MAX)
-            if abs(CS.out.steeringTorque) > abs(ea_simulated_torque):
-                ea_simulated_torque = CS.out.steeringTorque
-            can_sends.append(self.CCS.create_eps_update(
-                self.packer_pt,
-                CANBUS.cam,
-                CS.eps_stock_values,
-                ea_simulated_torque
-            ))
-    # **** Acceleration Controls ******************************************** #
-
-    if self.frame % self.CCP.ACC_CONTROL_STEP == 0 and self.CP.openpilotLongitudinalControl:
-      acc_control = self.CCS.acc_control_value(CS.out.cruiseState.available, CS.out.accFaulted, CC.longActive, CC.cruiseControl.override)
-      stopping = actuators.longControlState == LongCtrlState.stopping
-      starting = actuators.longControlState == LongCtrlState.pid and (CS.esp_hold_confirmation or CS.out.vEgo < self.CP.vEgoStopping)
-      accel = clip(actuators.accel, self.CCP.ACCEL_MIN, self.CCP.ACCEL_MAX) if CC.longActive else 0
-                                                                            # SMA to EMA conversion: alpha = 2 / (n + 1)    n = SMA-sample
-      self.accel_diff = (0.0019 * (accel - self.accel_last)) + (1 - 0.0019) * self.accel_diff         # 1000 SMA equivalence
-      self.long_jerklimit = (0.01 * (clip(abs(accel), 0.7, 2))) + (1 - 0.01) * self.long_jerklimit    # set jerk limit based on accel
-      self.long_deviation = clip(CS.out.vEgo/40, 0, 0.13) * interp(abs(accel - self.accel_diff), [0, .2, 1.], [0.0, 0.0, 0.0])
-
-      if self.CCS == pqcan and CC.longActive and actuators.accel <= 0 and CS.out.vEgoRaw <= 5:
-        if not self.EPB_enable:  # first frame of EPB entry
-          self.EPB_counter = 0
-          self.EPB_brake = 0
-          self.EPB_brake_last = accel - (CS.aEgoBremse / 2)
-          self.EPB_enable = 1
-        else:
-          self.EPB_brake = limit_jerk(accel, self.EPB_brake_last, 0.7, 0.02)
-          self.EPB_brake_last = self.EPB_brake
-      else:
-        acc_control = 0 if acc_control != 6 and self.EPB_enable else acc_control  # Pulse ACC status to 0 for one frame
-        self.EPB_enable = 0
-        self.EPB_brake = 0
-
-        # Increment the EPB counter when EPB is enabled
-        # Keep ACC status 0 for first 9 frames of EPB
-      if self.EPB_enable:
-        self.EPB_counter = min(self.EPB_counter + 1, 10)
-        if self.EPB_counter <= 9:
-          acc_control = 0
-      else:
-        self.EPB_counter = 0
-
-      self.accel_last = accel
-      if self.CCS == pqcan:
-        can_sends.append(self.CCS.create_epb_control(self.packer_pt, CANBUS.br, self.EPB_brake, self.EPB_enable))
-      can_sends.extend(self.CCS.create_acc_accel_control(self.packer_pt, CANBUS.pt, CS.acc_type, accel,
-                                                         acc_control, stopping, starting, CS.esp_hold_confirmation,
-                                                         self.long_deviation, self.long_jerklimit))
 
     # **** HUD Controls ***************************************************** #
 
