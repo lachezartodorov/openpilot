@@ -144,6 +144,7 @@ class CarController(CarControllerBase):
       self.CCP.STEER_STEP = 2   # 50 hz
 
   def update(self, CC, CS, now_nanos):
+    apply_angle = 0.0
     self.sm.update(0)
     if not self.CP.pcmCruiseSpeed:
 
@@ -190,7 +191,6 @@ class CarController(CarControllerBase):
         self.PLA_status = 6
         self.PLA_ESP_status = 6
       else:
-        self.PLA_status = 8
         self.PLA_status = 8
         self.PLA_ESP_status = 8
         self.PLA_entryCounter = 0
