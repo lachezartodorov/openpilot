@@ -168,14 +168,14 @@ class CarController(CarControllerBase):
     # PLA Status 6: PLA Active
     # PLA Status 10: Driver Override
 
-    if self.PLA_Status != 8 and CC.latActive:
+    if CC.latActive:
       self.PLA_Status = 6
       self.PLA_ESP_Status = 6
     elif not CC.latActive:
       self.PLA_Status = 8
       self.PLA_ESP_Status = 8
 
-    steer_step = self.CCP.STEER_STEP #if self.PLA_Status == 6 else 100  # 50Hz or 1Hz
+    steer_step = self.CCP.STEER_STEP if self.PLA_Status == 6 else 100  # 50Hz or 1Hz
     if self.frame % steer_step == 0:
       apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
         if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
