@@ -131,7 +131,6 @@ class CarController(CarControllerBase):
     self.send_count = 0
 
   def update(self, CC, CS, now_nanos):
-    apply_angle = 0.0
     self.sm.update(0)
     if not self.CP.pcmCruiseSpeed:
 
@@ -168,26 +167,25 @@ class CarController(CarControllerBase):
     # PLA Status 8: PLA Standby
     # PLA Status 6: PLA Active
     # PLA Status 10: Driver Override
-    if CC.latActive:
-      self.PLA_Status = 6
-      self.PLA_ESP_Status = 6
-    else:
-      self.PLA_Status = 8
-      self.PLA_ESP_Status = 8
-
     if self.PLA_Status == 6:
       steer_step = self.CCP.STEER_STEP  # 2 for 50Hz
     else:  # PLA_Status == 8
       steer_step = 100  # 1Hz
-
     if self.frame % steer_step == 0:
-      apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
-        if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
-      self.apply_angle_last = apply_angle
-      self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
-      can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_Status, self.PLA_ESP_Status))
-    apply_steer = 0
-    can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, apply_steer, False))
+      if CC.latActive:
+        self.PLA_Status = 6
+        self.PLA_ESP_Status = 6
+      else:
+        self.PLA_Status = 8
+        self.PLA_ESP_Status = 8
+
+        apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
+          if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
+        self.apply_angle_last = apply_angle
+        self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
+        can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_Status, self.PLA_ESP_Status))
+      apply_steer = 0
+      can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, apply_steer, False))
 
     if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
       # Pacify VW Emergency Assist driver inactivity detection by changing its view of driver steering input torque
