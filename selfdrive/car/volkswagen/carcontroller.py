@@ -169,8 +169,10 @@ class CarController(CarControllerBase):
     # PLA Status 10: Driver Override
     if self.PLA_Status == 6:
       steer_step = self.CCP.STEER_STEP  # 2 for 50Hz
-    else:  # PLA_Status == 8
+    elif self.PLA_Status == 8:  # PLA_Status == 8
       steer_step = 100  # 1Hz
+    else:
+      steer_step = self.CCP.STEER_STEP
 
     if self.frame % steer_step == 0:
       if CC.latActive:
