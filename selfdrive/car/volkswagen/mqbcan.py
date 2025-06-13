@@ -1,14 +1,27 @@
-def create_steering_control(packer, bus, apply_steer, lkas_enabled):
+def create_steering_control(packer, bus, apply_angle, PLA_Status, PLA_ESP_Status):
   values = {
-    "HCA_01_Status_HCA": 5 if lkas_enabled else 3,
-    "HCA_01_LM_Offset": abs(apply_steer),
-    "HCA_01_LM_OffSign": 1 if apply_steer < 0 else 0,
+    "PLA_Status_PLA_EPS": PLA_Status,
+    "PLA_Status_PLA_ESP": PLA_ESP_Status,
+    "PLA_LW_Soll": abs(apply_angle),
+    "PLA_01_Signal_red_cyclic": 1 if PLA_Status == 6 else 0,
+    "PLA_VZ_LW_Soll": (1 if apply_angle < 0 else 0) if PLA_Status == 6 else 0,
+    "PLA_BremsMom_Verzoeg": 1,
+    "PLA_Anhalten": 0,
+    "PLA_Anf_Bremsverzoegerung": 0,
+    "PLA_Bremsverzoegerung": 0,
+  }
+  return packer.make_can_msg("PLA_01", bus, values)
+
+def HCA (packer, bus, apply_steer, lkas_enabled):
+  values = {
+    "HCA_01_Status_HCA": 3,
+    "HCA_01_LM_Offset": 0,
+    "HCA_01_LM_OffSign": 0,
     "HCA_01_Vib_Freq": 18,
-    "HCA_01_Sendestatus": 1 if lkas_enabled else 0,
+    "HCA_01_Sendestatus": 0,
     "EA_ACC_Wunschgeschwindigkeit": 327.36,
   }
   return packer.make_can_msg("HCA_01", bus, values)
-
 
 def create_eps_update(packer, bus, eps_stock_values, ea_simulated_torque):
   values = {s: eps_stock_values[s] for s in [
@@ -18,15 +31,11 @@ def create_eps_update(packer, bus, eps_stock_values, ea_simulated_torque):
     "EPS_VZ_BLW",                  # Raw steering angle sign
     "EPS_HCA_Status",              # EPS HCA control status
   ]}
-
   values.update({
-    # Absolute driver torque input and sign, with EA inactivity mitigation
-    "EPS_Lenkmoment": abs(ea_simulated_torque),
-    "EPS_VZ_Lenkmoment": 1 if ea_simulated_torque < 0 else 0,
+    "EPS_Lenkmoment": 0,
+    "EPS_VZ_Lenkmoment": 0,
   })
-
   return packer.make_can_msg("LH_EPS_03", bus, values)
-
 
 def create_lka_hud_control(packer, bus, ldw_stock_values, lat_active, steering_pressed, hud_alert, hud_control):
   values = {}
