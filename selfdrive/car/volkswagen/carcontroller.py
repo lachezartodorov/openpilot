@@ -171,6 +171,7 @@ class CarController(CarControllerBase):
       steer_step = self.CCP.STEER_STEP  # 2 for 50Hz
     else:  # PLA_Status == 8
       steer_step = 100  # 1Hz
+
     if self.frame % steer_step == 0:
       if CC.latActive:
         self.PLA_Status = 6
@@ -179,13 +180,14 @@ class CarController(CarControllerBase):
         self.PLA_Status = 8
         self.PLA_ESP_Status = 8
 
-        apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
-          if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
-        self.apply_angle_last = apply_angle
-        self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
-        can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_Status, self.PLA_ESP_Status))
-      apply_steer = 0
-      can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, apply_steer, False))
+      apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
+        if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
+      self.apply_angle_last = apply_angle
+      self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
+      can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_Status, self.PLA_ESP_Status))
+
+    apply_steer = 0
+    can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, apply_steer, False))
 
     if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
       # Pacify VW Emergency Assist driver inactivity detection by changing its view of driver steering input torque
