@@ -69,13 +69,11 @@ class CarState(CarStateBase):
       ret.leftBlinker = bool(pt_cp.vl["Blinkmodi_01"]["BM_links"])
       ret.rightBlinker = bool(pt_cp.vl["Blinkmodi_01"]["BM_rechts"])
 
-      ret.cruiseState.available = True #pt_cp.vl["TSK_02"]["TSK_Status"] in (0, 1, 2)
-      ret.cruiseState.enabled = True #pt_cp.vl["TSK_02"]["TSK_Status"] in (1, 2)
+      ret.cruiseState.available = pt_cp.vl["TSK_02"]["TSK_Status"] in (0, 1, 2)
+      ret.cruiseState.enabled = pt_cp.vl["TSK_02"]["TSK_Status"] in (1, 2)
       ret.accFaulted = pt_cp.vl["TSK_02"]["TSK_Status"] == 3
 
       self.gra_stock_values = pt_cp.vl["LS_01"]
-
-      ret.EPS_PLA_Status1 = pt_cp.vl["LH_EPS_01"]["EPS_PLA_Status1"]
 
     else:
       # MQB platform specific signals
