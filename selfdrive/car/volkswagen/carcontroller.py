@@ -175,7 +175,7 @@ class CarController(CarControllerBase):
       self.PLA_Status = 6
       self.PLA_ESP_Status = 6
 
-    steer_step = self.CCP.STEER_STEP if self.PLA_Status == 6 else 100  # 50Hz or 1Hz
+    steer_step = self.CCP.STEER_STEP #if self.PLA_Status == 6 else 100  # 50Hz or 1Hz
     if self.frame % steer_step == 0:
       apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
         if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
