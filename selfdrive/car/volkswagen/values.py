@@ -76,7 +76,7 @@ class CarControllerParams:
       }
 
     else:
-      self.LDW_STEP = 100                  # LDW_02 message frequency 10Hz
+      self.LDW_STEP = 10                  # LDW_02 message frequency 10Hz
       self.ACC_HUD_STEP = 6               # ACC_02 message frequency 16Hz
       self.BTN_STEP = 3
 

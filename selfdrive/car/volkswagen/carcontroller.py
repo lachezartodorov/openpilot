@@ -87,7 +87,6 @@ class CarController(CarControllerBase):
     self.PLA_driverExit = False
     self.PLA_driverExit_last = False
     self.CSsteeringAngleDegLast = 0
-    self.CSLH3_SignLast = 0
     self.last_button_frame = 0
     self.accel_last = 0
     self.frame = 0
@@ -136,12 +135,12 @@ class CarController(CarControllerBase):
 
   def update_steer_step(self, status):
     # Return frame step (1 frame = 0.01s bij 100Hz) based on PLA_status
-    if status in (1, 6, 10):
-      self.CCP.STEER_STEP = 2    # 50Hz
-    elif status == 8:
-      self.CCP.STEER_STEP = 100  # 1Hz
-    else:
-      self.CCP.STEER_STEP = 2   # 50 hz
+    #if status in (1, 6, 10):
+    #  self.CCP.STEER_STEP = 2    # 50Hz
+    #elif status == 8:
+    #  self.CCP.STEER_STEP = 100  # 1Hz
+    #else:
+    #  self.CCP.STEER_STEP = 2   # 50 hz
 
   def update(self, CC, CS, now_nanos):
     apply_angle = 0.0
@@ -208,10 +207,9 @@ class CarController(CarControllerBase):
 
       can_sends.append(self.CCS.create_steering_control(
         self.packer_pt, CANBUS.br, apply_angle,
-        self.PLA_status, self.PLA_ESP_status, self.CSLH3_SignLast
+        self.PLA_status, self.PLA_ESP_status
       ))
       can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, False, False))
-      self.CSLH3_SignLast = CS.LH_3_Sign
 
       if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
         ea_simulated_torque = clip(apply_steer * 2, -self.CCP.STEER_MAX, self.CCP.STEER_MAX)

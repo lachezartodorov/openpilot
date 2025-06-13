@@ -1,16 +1,28 @@
-def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status, LH_3_Sign):
+import time
+
+_last_pla8_sent = 0
+
+def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status):
+  global _last_pla8_sent
+  # Alleen status 8 limiteren
+  if PLA_status == 8:
+    now = time.monotonic()
+    if now - _last_pla8_sent < 1.0:  # 1 Hz, dus pas na 1 seconde weer sturen
+      return None
+    _last_pla8_sent = now
+
   values = {
     "PLA_Status_PLA_EPS": PLA_status,
     "PLA_LW_Soll": abs(apply_angle),
-    "PLA_VZ_LW_Soll": (1 if apply_angle < 0 else 0) if PLA_status == 6 else LH_3_Sign,
+    "PLA_VZ_LW_Soll": (1 if apply_angle < 0 else 0) if PLA_status == 6 else 0,
     "PLA_Status_PLA_ESP": PLA_ESP_status,
     "PLA_Bremsmoment": 0,
     "PLA_Bremsverzoegerung": 0,
     "PLA_Anf_Bremsverzoegerung": 0,
-    "PLA_BremsMom_Verzoeg": 0,
+    "PLA_BremsMom_Verzoeg": 1,
     "PLA_Anhalten": 0,
     "PLA_Anhalteweg": 0,
-    "PLA_01_Signal_red_cyclic": 1 if PLA_status == 6 else 0,
+    "PLA_01_Signal_red_cyclic": 1,
   }
 
   return packer.make_can_msg("PLA_01", bus, values)
