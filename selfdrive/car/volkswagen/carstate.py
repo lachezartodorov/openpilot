@@ -291,6 +291,8 @@ class CarState(CarStateBase):
     self.LH2_steeringState = pt_cp.vl["Lenkhilfe_2"]["LH2_aktLenkeingriff"]
     self.LH2_Abbr = pt_cp.vl["Lenkhilfe_2"]["LH2_PLA_Abbr"]
 
+    self.EPS_PLA_Status1 = pt_cp.vl["LH_EPS_01"]["EPS_PLA_Status"]
+
     self.MOB_Standby = br_cp.vl["Motor_Bremse"]["MOB_Standby"]
 
     # Update button states for turn signals and ACC controls, capture all ACC button state/config for passthrough
