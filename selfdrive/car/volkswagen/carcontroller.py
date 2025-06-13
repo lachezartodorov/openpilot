@@ -191,8 +191,8 @@ class CarController(CarControllerBase):
         self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 32 else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 32 else self.PLA_entryCounter
 
-        if CS.EPS_PLA_Status != 6 and self.PLA_entryCounter >= 30:
-          self.PLA_entryCounter = 0
+        #if CS.EPS_PLA_Status != 6 and self.PLA_entryCounter >= 30:
+        #  self.PLA_entryCounter = 0
       else:
         self.PLA_status = 8
         self.PLA_ESP_status = 8
