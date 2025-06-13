@@ -193,7 +193,7 @@ class CarController(CarControllerBase):
     self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
     can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_Status, self.PLA_ESP_Status))
     apply_steer = 0
-    can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, False, False))
+    can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, apply_steer, False))
 
     if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
       # Pacify VW Emergency Assist driver inactivity detection by changing its view of driver steering input torque
