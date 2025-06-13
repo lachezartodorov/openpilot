@@ -19,7 +19,7 @@ Button = namedtuple('Button', ['event_type', 'can_addr', 'can_msg', 'values'])
 
 
 class CarControllerParams:
-  STEER_STEP = 100                         # HCA_01/HCA_1 message frequency 50Hz
+  STEER_STEP = 2                         # HCA_01/HCA_1 message frequency 50Hz
   ACC_CONTROL_STEP = 2                     # ACC_06/ACC_07/ACC_System frequency 50Hz
 
   # Documented lateral limits: 3.00 Nm max, rate of change 5.00 Nm/sec.
@@ -76,7 +76,7 @@ class CarControllerParams:
       }
 
     else:
-      self.LDW_STEP = 10                  # LDW_02 message frequency 10Hz
+      self.LDW_STEP = 100                  # LDW_02 message frequency 10Hz
       self.ACC_HUD_STEP = 6               # ACC_02 message frequency 16Hz
       self.BTN_STEP = 3
 

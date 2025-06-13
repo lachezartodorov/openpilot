@@ -139,7 +139,7 @@ class CarController(CarControllerBase):
     if status in (1, 6, 10):
       self.CCP.STEER_STEP = 2    # 50Hz
     elif status == 8:
-      self.CCP.STEER_STEP = 2  # 1Hz
+      self.CCP.STEER_STEP = 100  # 1Hz
     else:
       self.CCP.STEER_STEP = 2   # 50 hz
 
@@ -179,7 +179,7 @@ class CarController(CarControllerBase):
     # **** Steering Controls ************************************************ #
 
     self.update_steer_step(self.PLA_status)
-    print(f"[DEBUG] PLA_status: {self.PLA_status}, STEER_STEP: {self.CCP.STEER_STEP}, apply_angle: {apply_angle:.2f}")
+    #print(f"[DEBUG] PLA_status: {self.PLA_status}, STEER_STEP: {self.CCP.STEER_STEP}, apply_angle: {apply_angle:.2f}")
 
     if self.frame % self.CCP.STEER_STEP == 0:
       # PLA_status definitions for MLB:
