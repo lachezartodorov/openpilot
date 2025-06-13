@@ -83,9 +83,6 @@ class CarController(CarControllerBase):
     self.ACC_anz_blind_counter = 0
     self.PLA_status = 0
     self.PLA_ESP_status = 0
-    self.PLA_entryCounter = 0
-    self.PLA_driverExit = False
-    self.PLA_driverExit_last = False
     self.CSsteeringAngleDegLast = 0
     self.last_button_frame = 0
     self.accel_last = 0
@@ -178,46 +175,33 @@ class CarController(CarControllerBase):
     # **** Steering Controls ************************************************ #
 
     self.update_steer_step(self.PLA_status)
-    #print(f"[DEBUG] PLA_status: {self.PLA_status}, STEER_STEP: {self.CCP.STEER_STEP}, apply_angle: {apply_angle:.2f}")
+    # **** Steering Controls ************************************************ #
+    # MQB PLA:
+    # PLA Status 8: PLA Standby
+    # PLA Status 6: PLA Active
+    # PLA Status 10: Driver Override
+    if CC.latActive:
+      self.PLA_Status = 6
+      self.PLA_ESP_Status = 6
+    else:
+      self.PLA_Status = 8
+      self.PLA_ESP_Status = 8
 
-    if self.frame % self.CCP.STEER_STEP == 0:
-      # PLA_status definitions for MLB:
-      #  8 = standby
-      #  6 = active
-      #  9 = reset
+    apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams)  \
+      if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
+    self.apply_angle_last = apply_angle
+    self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
+    can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_Status, self.PLA_ESP_Status))
+    can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, False, False))
 
-      if CC.latActive:
-        self.PLA_status = 6
-        self.PLA_ESP_status = 6
-      else:
-        self.PLA_status = 8
-        self.PLA_ESP_status = 8
-        self.PLA_entryCounter = 0
-        self.PLA_driverExit_last = self.PLA_driverExit
-
-      apply_angle = apply_std_steer_angle_limits(
-        actuators.steeringAngleDeg,
-        self.apply_angle_last,
-        CS.out.vEgo,
-        CarControllerParams
-      ) if CC.latActive and self.PLA_status == 6 else self.CSsteeringAngleDegLast
-
-      self.apply_angle_last = apply_angle
-      self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
-
-      can_sends.append(self.CCS.create_steering_control(
-        self.packer_pt, CANBUS.br, apply_angle,
-        self.PLA_status, self.PLA_ESP_status
-      ))
-      can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, False, False))
-
-      if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
-        ea_simulated_torque = clip(apply_steer * 2, -self.CCP.STEER_MAX, self.CCP.STEER_MAX)
-        if abs(CS.out.steeringTorque) > abs(ea_simulated_torque):
-          ea_simulated_torque = CS.out.steeringTorque
-        can_sends.append(self.CCS.create_eps_update(
-          self.packer_pt, CANBUS.cam, CS.eps_stock_values, ea_simulated_torque
-        ))
+    if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
+      # Pacify VW Emergency Assist driver inactivity detection by changing its view of driver steering input torque
+      # to the greatest of actual driver input or 2x openpilot's output (1x openpilot output is not enough to
+      # consistently reset inactivity detection on straight level roads). See commaai/openpilot#23274 for background.
+      ea_simulated_torque = clip(apply_steer * 2, -self.CCP.STEER_MAX, self.CCP.STEER_MAX)
+      if abs(CS.out.steeringTorque) > abs(ea_simulated_torque):
+        ea_simulated_torque = CS.out.steeringTorque
+      can_sends.append(self.CCS.create_eps_update(self.packer_pt, CANBUS.cam, CS.eps_stock_values, ea_simulated_torque))
 
     # **** Acceleration Controls ******************************************** #
 

@@ -86,23 +86,15 @@ class CarState(CarStateBase):
 
       ret.gas = pt_cp.vl["Motor_20"]["MO_Fahrpedalrohwert_01"] / 100.0
       ret.gasPressed = ret.gas > 0
-      brake_pedal_pressed = bool(pt_cp.vl["Motor_14"]["MO_Fahrer_bremst"])
+      brake_pedal_pressed = 0
       self.esp_hold_confirmation = bool(pt_cp.vl["ESP_21"]["ESP_Haltebestaetigung"])
       ret.espDisabled = pt_cp.vl["ESP_21"]["ESP_Tastung_passiv"] != 0
 
       # Digital instrument clusters expect the ACC HUD lead car distance to be scaled differently
       self.upscale_lead_car_signal = bool(pt_cp.vl["Kombi_03"]["KBI_Variante"])
 
-      if trans_type == TransmissionType.automatic:
-        ret.gearShifter = self.parse_gear_shifter(self.CCP.shifter_values.get(pt_cp.vl["Getriebe_11"]["GE_Fahrstufe"], None))
-      elif trans_type == TransmissionType.direct:
-        ret.gearShifter = self.parse_gear_shifter(self.CCP.shifter_values.get(pt_cp.vl["EV_Gearshift"]["GearPosition"], None))
-      elif trans_type == TransmissionType.manual:
-        ret.clutchPressed = not pt_cp.vl["Motor_14"]["MO_Kuppl_schalter"]
-        if bool(pt_cp.vl["Gateway_72"]["BCM1_Rueckfahrlicht_Schalter"]):
-          ret.gearShifter = GearShifter.reverse
-        else:
-          ret.gearShifter = GearShifter.drive
+      # Update gear and/or clutch position data.
+      ret.gearShifter = GearShifter.drive
 
       ret.doorOpen = any([pt_cp.vl["Gateway_72"]["ZV_FT_offen"],
                           pt_cp.vl["Gateway_72"]["ZV_BT_offen"],
@@ -113,7 +105,7 @@ class CarState(CarStateBase):
       # ACC okay but disabled (1), ACC ready (2), a radar visibility or other fault/disruption (6 or 7)
       # currently regulating speed (3), driver accel override (4), brake only (5)
       ret.cruiseState.available = pt_cp.vl["TSK_06"]["TSK_Status"] in (2, 3, 4, 5)
-      ret.cruiseState.enabled = pt_cp.vl["TSK_06"]["TSK_Status"] in (3, 4, 5)
+      ret.cruiseState.enabled = pt_cp.vl["TSK_06"]["TSK_Status"] in (2, 3, 4, 5)
       # Speed limiter mode; ECM faults if we command ACC while not pcmCruise
       ret.cruiseState.nonAdaptive = bool(pt_cp.vl["TSK_06"]["TSK_Limiter_ausgewaehlt"])
       ret.accFaulted = pt_cp.vl["TSK_06"]["TSK_Status"] in (6, 7)
@@ -156,9 +148,9 @@ class CarState(CarStateBase):
 
     # Update gas, brakes, and gearshift.
     ret.brake = pt_cp.vl["ESP_05"]["ESP_Bremsdruck"] / 250.0  # FIXME: this is pressure in Bar, not sure what OP expects
-    brake_pressure_detected = bool(pt_cp.vl["ESP_05"]["ESP_Fahrer_bremst"])
+    brake_pressure_detected = 0
     ret.brakePressed = brake_pedal_pressed or brake_pressure_detected
-    ret.parkingBrake = bool(pt_cp.vl["Kombi_01"]["KBI_Handbremse"])
+    ret.parkingBrake = 0
     ret.brakeLightsDEPRECATED = bool(pt_cp.vl["ESP_05"]['ESP_Status_Bremsdruck'])
 
     # Update seatbelt fastened status.
