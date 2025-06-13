@@ -209,6 +209,8 @@ class CarController(CarControllerBase):
         self.packer_pt, CANBUS.br, apply_angle,
         self.PLA_status, self.PLA_ESP_status
       ))
+      can_sends.append(self.create_kombi_msg(self.packer_pt, CANBUS.br))
+
       can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, False, False))
 
       if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
