@@ -130,15 +130,6 @@ class CarController(CarControllerBase):
     self.acc_type = -1
     self.send_count = 0
 
-  def update_steer_step(self, status):
-
-    if status in (1, 6, 10):
-      self.CCP.STEER_STEP = 2    # 50Hz
-    elif status == 8:
-      self.CCP.STEER_STEP = 2  # 50Hz
-    else:
-      self.CCP.STEER_STEP = 2   # 50 hz
-
   def update(self, CC, CS, now_nanos):
     apply_angle = 0.0
     self.sm.update(0)
@@ -173,9 +164,6 @@ class CarController(CarControllerBase):
         self.slc_active_stock = slc_active
 
     # **** Steering Controls ************************************************ #
-
-    self.update_steer_step(self.PLA_status)
-    # **** Steering Controls ************************************************ #
     # MQB PLA:
     # PLA Status 8: PLA Standby
     # PLA Status 6: PLA Active
@@ -187,11 +175,17 @@ class CarController(CarControllerBase):
       self.PLA_Status = 8
       self.PLA_ESP_Status = 8
 
-    apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams)  \
-      if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
-    self.apply_angle_last = apply_angle
-    self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
-    can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_Status, self.PLA_ESP_Status))
+    if self.PLA_Status == 6:
+      steer_step = self.CCP.STEER_STEP  # 2 for 50Hz
+    else:  # PLA_Status == 8
+      steer_step = 100  # 1Hz
+
+    if self.frame % steer_step == 0:
+      apply_angle = apply_std_steer_angle_limits(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgo, CarControllerParams) \
+        if CC.latActive and self.PLA_Status == 6 else self.CSsteeringAngleDegLast
+      self.apply_angle_last = apply_angle
+      self.CSsteeringAngleDegLast = CS.out.steeringAngleDeg
+      can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.br, apply_angle, self.PLA_Status, self.PLA_ESP_Status))
     apply_steer = 0
     can_sends.append(self.CCS.HCA(self.packer_pt, CANBUS.pt, apply_steer, False))
 
