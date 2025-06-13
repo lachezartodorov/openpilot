@@ -1,15 +1,4 @@
-import time
-
-_last_pla8_sent = 0
-
 def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status):
-  global _last_pla8_sent
-  # Alleen status 8 limiteren
-  if PLA_status == 8:
-    now = time.monotonic()
-    if now - _last_pla8_sent < 1.0:  # 1 Hz, dus pas na 1 seconde weer sturen
-      return None
-    _last_pla8_sent = now
 
   values = {
     "PLA_Status_PLA_EPS": PLA_status,
