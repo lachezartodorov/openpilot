@@ -138,7 +138,7 @@ class CarController(CarControllerBase):
     if status in (1, 6, 10):
       self.CCP.STEER_STEP = 2    # 50Hz
     elif status == 8:
-      self.CCP.STEER_STEP = 10  # 10Hz
+      self.CCP.STEER_STEP = 2  # 50Hz
     else:
       self.CCP.STEER_STEP = 2   # 50 hz
 
