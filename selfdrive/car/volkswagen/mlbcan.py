@@ -15,12 +15,6 @@ def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status
 
   return packer.make_can_msg("PLA_01", bus, values)
 
-def create_kombi_msg(packer, bus):
-  values = {
-    "KBI_PLA_in_Anzeige": 1,
-  }
-  return packer.make_can_msg("Kombi_01", bus, values)
-
 def HCA(packer, bus, apply_steer, lkas_enabled):
   values = {
     "HCA_01_Status_HCA": 7 if lkas_enabled else 3,
