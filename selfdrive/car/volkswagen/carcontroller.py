@@ -134,7 +134,7 @@ class CarController(CarControllerBase):
     self.send_count = 0
 
   def update_steer_step(self, status):
-    # Return frame step (1 frame = 0.01s bij 100Hz) based on PLA_status
+
     if status in (1, 6, 10):
       self.CCP.STEER_STEP = 2    # 50Hz
     elif status == 8:
