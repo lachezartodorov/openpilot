@@ -81,8 +81,8 @@ class CarController(CarControllerBase):
     self.acc_anz_counter_last = None
     self.ACC_anz_blind = 0
     self.ACC_anz_blind_counter = 0
-    self.PLA_status = 8
-    self.PLA_ESP_status = 8
+    self.PLA_Status = 8
+    self.PLA_ESP_Status = 8
     self.CSsteeringAngleDegLast = 0
     self.last_button_frame = 0
     self.accel_last = 0
