@@ -2,7 +2,7 @@ def create_steering_control(packer, bus, apply_angle, PLA_status, PLA_ESP_status
   values = {
     "PLA_Status_PLA_EPS": PLA_status,
     "PLA_LW_Soll": abs(apply_angle),
-    "PLA_VZ_LW_Soll": (1 if apply_angle < 0 else 0) if PLA_status == 6,
+    "PLA_VZ_LW_Soll": (1 if apply_angle < 0 else 0) if PLA_status == 6 else 0,
     "PLA_Status_PLA_ESP": PLA_ESP_status,
     "PLA_Bremsmoment": 0,
     "PLA_Bremsverzoegerung": 0,
