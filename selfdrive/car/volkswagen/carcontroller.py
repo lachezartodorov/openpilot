@@ -177,7 +177,7 @@ class CarController(CarControllerBase):
 
     # **** Steering Controls ************************************************ #
 
-    self.update_steer_step(self.PLA_status)
+    #self.update_steer_step(self.PLA_status)
     #print(f"[DEBUG] PLA_status: {self.PLA_status}, STEER_STEP: {self.CCP.STEER_STEP}, apply_angle: {apply_angle:.2f}")
 
     if self.frame % self.CCP.STEER_STEP == 0:
