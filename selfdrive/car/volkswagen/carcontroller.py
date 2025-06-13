@@ -81,8 +81,8 @@ class CarController(CarControllerBase):
     self.acc_anz_counter_last = None
     self.ACC_anz_blind = 0
     self.ACC_anz_blind_counter = 0
-    self.PLA_Status = 8
-    self.PLA_ESP_Status = 8
+    self.PLA_Status = 0
+    self.PLA_ESP_Status = 0
     self.CSsteeringAngleDegLast = 0
     self.last_button_frame = 0
     self.accel_last = 0
@@ -172,8 +172,8 @@ class CarController(CarControllerBase):
       self.PLA_Status = 6
       self.PLA_ESP_Status = 6
     elif not CC.latActive:
-      self.PLA_Status = 8
-      self.PLA_ESP_Status = 8
+      self.PLA_Status = 6
+      self.PLA_ESP_Status = 6
 
     steer_step = self.CCP.STEER_STEP if self.PLA_Status == 6 else 100  # 50Hz or 1Hz
     if self.frame % steer_step == 0:
