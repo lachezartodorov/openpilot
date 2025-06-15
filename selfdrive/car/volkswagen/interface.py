@@ -86,7 +86,7 @@ class CarInterface(CarInterfaceBase):
     if ret.flags & VolkswagenFlags.PQ or ret.flags & VolkswagenFlags.MLB:
       ret.steerActuatorDelay = 0.13
       ret.steerRatio = 16.0
-      ret.mass = 1979.
+      ret.mass = 1985.
       ret.wheelbase = 2.8
       ret.centerToFront = ret.wheelbase * 0.46
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
