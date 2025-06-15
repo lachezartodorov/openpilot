@@ -397,6 +397,7 @@ class CarState(CarStateBase):
       # sig_address, frequency
       ("LWI_01", 100),      # From J500 Steering Assist with integrated sensors
       ("LH_EPS_03", 100),   # From J500 Steering Assist with integrated sensors
+      ("LH_EPS_01", 25),
       ("Motor_03", 100),    # From J623 Engine control module
       ("ESP_03", 50),       # From J104 ABS/ESP controller
       ("ESP_05", 50),       # From J104 ABS/ESP controller
