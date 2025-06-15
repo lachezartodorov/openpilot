@@ -75,6 +75,8 @@ class CarState(CarStateBase):
 
       self.gra_stock_values = pt_cp.vl["LS_01"]
 
+      self.EPS_PLA_status = pt_cp.vl["LH_EPS_01"]["EPS_PLA_Status"]
+
     else:
       # MQB platform specific signals
       ret.wheelSpeeds = self.get_wheel_speeds(
