@@ -188,7 +188,7 @@ class CarController(CarControllerBase):
 
       if CC.latActive:
         self.PLA_status = 6 if self.PLA_entryCounter >= 11 else 4
-        self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 32 else 4
+        self.PLA_ESP_status = 6 if self.PLA_entryCounter >= 11 else 4
         self.PLA_entryCounter += 1 if self.PLA_entryCounter <= 32 else self.PLA_entryCounter
         # retry entry until engagement.
         if CS.EPS_PLA_status != 6 and self.PLA_entryCounter >= 30:
