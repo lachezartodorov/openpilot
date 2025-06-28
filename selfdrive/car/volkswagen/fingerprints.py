@@ -923,10 +923,9 @@ FW_VERSIONS = {
     (Ecu.eps, 0x712, None): [
       b'\xf1\x878R0909144R \xf1\x890511\xf1\x82\x01\n\x1a',
     ],
-    #(Ecu.fwdRadar, 0x757, None): [
-    #  # FIXME: placeholder
-    #  b'\xf1\x872Q0907572M \xf1\x890233',
-    #],
+    (Ecu.fwdRadar, 0x757, None): [
+      b'\xf1\x878R0907561A\x00\xf1\x890410\xf1\x80100',
+    ],
   },
   CAR.SEAT_ATECA_MK1: {
     (Ecu.engine, 0x7e0, None): [
