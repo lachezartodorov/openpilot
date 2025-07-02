@@ -37,7 +37,7 @@ def create_acc_buttons_control(packer, bus, gra_stock_values, frame=0, buttons=0
   set_cruise = 1 if buttons == 4 else 0
 
   values.update({
-    "COUNTER": (frame + 1) % 0x10 if custom_stock_long else (gra_stock_values["COUNTER"] + 1) % 16,
+    "COUNTER": (gra_stock_values["COUNTER"] + 1) % 16,
     "LS_Abbrechen": cancel,
     "LS_Tip_Wiederaufnahme": resume or resume_cruise,
     "LS_Tip_Setzen": set_cruise,
