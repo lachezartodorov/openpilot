@@ -172,7 +172,7 @@ class CarState(CarStateBase):
     # Update ACC setpoint. When the setpoint is zero or there's an error, the
     # radar sends a set-speed of ~90.69 m/s / 203mph.
     if self.CP.pcmCruise and not self.CP.spFlags & VolkswagenFlagsSP.SP_CC_ONLY_NO_RADAR:
-      ret.cruiseState.speed = ext_cp.vl["ACC_02"]["ACC_Wunschgeschw_02"] * CV.KPH_TO_MS
+      ret.cruiseState.speed = cam_cp.vl["ACC_02"]["ACC_Wunschgeschw_02"] * CV.KPH_TO_MS
       if ret.cruiseState.speed > 90:
         ret.cruiseState.speed = 0
 
@@ -385,7 +385,6 @@ class CarState(CarStateBase):
       ("Kombi_01", 2),      # From J285 Instrument cluster
       ("Blinkmodi_01", 0),  # From J519 BCM (sent at 1Hz when no lights active, 50Hz when active)
       ("Kombi_03", 0),      # From J285 instrument cluster (not present on older cars, 1Hz when present)
-      ("ACC_02", 17),       # From J428 ACC radar control module
     ]
 
     # TODO: gear shift parsing
@@ -395,7 +394,9 @@ class CarState(CarStateBase):
 
   @staticmethod
   def get_cam_can_parser_mlb(CP):
-    messages = []
+    messages = [
+      ("ACC_02", 17),       # From J428 ACC radar control module
+    ]
 
     if CP.networkLocation == NetworkLocation.fwdCamera:
       messages += [
