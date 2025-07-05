@@ -301,6 +301,11 @@ class CAR(Platforms):
     chassis_codes={"A3"},
     wmis={WMI.VOLKSWAGEN_USA_CAR},
   )
+  VOLKSWAGEN_UP = VolkswagenPQPlatformConfig(
+    [VWCarDocs("Volkswagen UP!")],
+    VolkswagenCarSpecs(mass=880, wheelbase=2.42),
+    wmis={WMI.VOLKSWAGEN_EUROPE_CAR},
+  )
   VOLKSWAGEN_POLO_MK6 = VolkswagenMQBPlatformConfig(
     [
       VWCarDocs("Volkswagen Polo 2018-23", footnotes=[Footnote.VW_MQB_A0]),

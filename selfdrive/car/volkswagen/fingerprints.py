@@ -486,6 +486,17 @@ FW_VERSIONS = {
       b'\xf1\x877N0907572C \xf1\x890211\xf1\x82\x0152',
     ],
   },
+  CAR.VOLKSWAGEN_UP: {
+    (Ecu.engine, 0x7e0, None): [
+      b'\xf1\x8704C907309N \xf1\x890030',
+    ],
+    #(Ecu.transmission, 0x7e1, None): [
+    #],
+    #(Ecu.srs, 0x715, None): [
+    #],
+    #(Ecu.fwdRadar, 0x757, None): [
+    #],
+  },
   CAR.VOLKSWAGEN_POLO_MK6: {
     (Ecu.engine, 0x7e0, None): [
       b'\xf1\x8704C906025H \xf1\x895177',
