@@ -392,7 +392,7 @@ class CarState(CarStateBase):
       if CP.enableBsm:
         messages += PqExtraSignals.bsm_radar_messages
 
-    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam, enforce_checks=False)
+    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam)
 
 
 class MqbExtraSignals:
