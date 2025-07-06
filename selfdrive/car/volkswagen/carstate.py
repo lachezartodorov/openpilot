@@ -169,12 +169,17 @@ class CarState(CarStateBase):
     self.prev_mads_enabled = self.mads_enabled
 
     # Update vehicle speed and acceleration from ABS wheel speeds.
-    ret.wheelSpeeds = self.get_wheel_speeds(
-      pt_cp.vl["Bremse_3"]["Radgeschw__VL_4_1"],
-      pt_cp.vl["Bremse_3"]["Radgeschw__VR_4_1"],
-      pt_cp.vl["Bremse_3"]["Radgeschw__HL_4_1"],
-      pt_cp.vl["Bremse_3"]["Radgeschw__HR_4_1"],
-    )
+    #ret.wheelSpeeds = self.get_wheel_speeds(
+    #  pt_cp.vl["Bremse_3"]["Radgeschw__VL_4_1"],
+    #  pt_cp.vl["Bremse_3"]["Radgeschw__VR_4_1"],
+    #  pt_cp.vl["Bremse_3"]["Radgeschw__HL_4_1"],
+    #  pt_cp.vl["Bremse_3"]["Radgeschw__HR_4_1"],
+    #)
+    # UP! Missing wheel speeds. Testing
+    ret.wheelSpeeds.fl = 16.6
+    ret.wheelSpeeds.fr = 16.6
+    ret.wheelSpeeds.rl = 16.6
+    ret.wheelSpeeds.rr = 16.6
 
     # vEgo obtained from Bremse_1 vehicle speed rather than Bremse_3 wheel speeds because Bremse_3 isn't present on NSF
     ret.vEgoRaw = pt_cp.vl["Bremse_1"]["Geschwindigkeit_neu__Bremse_1_"] * CV.KPH_TO_MS
