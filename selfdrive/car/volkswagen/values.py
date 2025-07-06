@@ -301,8 +301,8 @@ class CAR(Platforms):
     chassis_codes={"A3"},
     wmis={WMI.VOLKSWAGEN_USA_CAR},
   )
-  VOLKSWAGEN_UP = VolkswagenPQPlatformConfig(
-    [VWCarDocs("Volkswagen UP!")],
+  VOLKSWAGEN_UP_MK1 = VolkswagenPQPlatformConfig(
+    [VWCarDocs("Volkswagen UP! 1ST GEN")],
     VolkswagenCarSpecs(mass=880, wheelbase=2.42),
     wmis={WMI.VOLKSWAGEN_EUROPE_CAR},
   )

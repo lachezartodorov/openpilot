@@ -486,14 +486,18 @@ FW_VERSIONS = {
       b'\xf1\x877N0907572C \xf1\x890211\xf1\x82\x0152',
     ],
   },
-  CAR.VOLKSWAGEN_UP: {
+  CAR.VOLKSWAGEN_UP_MK1: {
     (Ecu.engine, 0x7e0, None): [
-      b'\xf1\x8704C907309N \xf1\x890030',
+      b'\361\2070EA906016M \361\2117453',
     ],
     #(Ecu.transmission, 0x7e1, None): [
     #],
-    #(Ecu.srs, 0x715, None): [
-    #],
+    (Ecu.srs, 0x715, None): [
+      b'\361\2076C0959655S \361\2110503\361\202\0231111111111--000000----01----111111--11',
+    ],
+    (Ecu.eps, 0x712, None): [
+      b'\361\2072Q1909144R \361\2116212',
+    ],
     #(Ecu.fwdRadar, 0x757, None): [
     #],
   },
