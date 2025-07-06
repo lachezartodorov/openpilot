@@ -77,16 +77,17 @@ class CarState(CarStateBase):
     ret.brakeLightsDEPRECATED = bool(pt_cp.vl["ESP_05"]['ESP_Status_Bremsdruck'])
 
     # Update gear and/or clutch position data.
-    if trans_type == TransmissionType.automatic:
-      ret.gearShifter = self.parse_gear_shifter(self.CCP.shifter_values.get(pt_cp.vl["Getriebe_11"]["GE_Fahrstufe"], None))
-    elif trans_type == TransmissionType.direct:
-      ret.gearShifter = self.parse_gear_shifter(self.CCP.shifter_values.get(pt_cp.vl["EV_Gearshift"]["GearPosition"], None))
-    elif trans_type == TransmissionType.manual:
-      ret.clutchPressed = not pt_cp.vl["Motor_14"]["MO_Kuppl_schalter"]
-      if bool(pt_cp.vl["Gateway_72"]["BCM1_Rueckfahrlicht_Schalter"]):
-        ret.gearShifter = GearShifter.reverse
-      else:
-        ret.gearShifter = GearShifter.drive
+    #if trans_type == TransmissionType.automatic:
+    #  ret.gearShifter = self.parse_gear_shifter(self.CCP.shifter_values.get(pt_cp.vl["Getriebe_11"]["GE_Fahrstufe"], None))
+    #elif trans_type == TransmissionType.direct:
+    #  ret.gearShifter = self.parse_gear_shifter(self.CCP.shifter_values.get(pt_cp.vl["EV_Gearshift"]["GearPosition"], None))
+    #elif trans_type == TransmissionType.manual:
+    #  ret.clutchPressed = not pt_cp.vl["Motor_14"]["MO_Kuppl_schalter"]
+    #  if bool(pt_cp.vl["Gateway_72"]["BCM1_Rueckfahrlicht_Schalter"]):
+    #    ret.gearShifter = GearShifter.reverse
+    #  else:
+    #    ret.gearShifter = GearShifter.drive
+    ret.gearShifter = GearShifter.drive
 
     # Update door and trunk/hatch lid open status.
     ret.doorOpen = any([pt_cp.vl["Gateway_72"]["ZV_FT_offen"],
@@ -240,8 +241,9 @@ class CarState(CarStateBase):
 
     # Update ACC radar status.
     self.acc_type = ext_cp.vl["ACC_System"]["ACS_Typ_ACC"]
-    ret.cruiseState.available = bool(pt_cp.vl["Motor_5"]["GRA_Hauptschalter"])
+    #ret.cruiseState.available = bool(pt_cp.vl["Motor_5"]["GRA_Hauptschalter"])
     ret.cruiseState.enabled = pt_cp.vl["Motor_2"]["GRA_Status"] in (1, 2)
+    ret.cruiseState.available = ret.cruiseState.enabled  # TEST hack for UP!f
     if self.CP.pcmCruise:
       ret.accFaulted = ext_cp.vl["ACC_GRA_Anzeige"]["ACA_StaACC"] in (6, 7)
     else:
@@ -346,13 +348,13 @@ class CarState(CarStateBase):
     messages = [
       # sig_address, frequency
       ("Bremse_1", 100),    # From J104 ABS/ESP controller
-      ("Bremse_3", 100),    # From J104 ABS/ESP controller
+      #("Bremse_3", 100),    # From J104 ABS/ESP controller
       ("Lenkhilfe_3", 100),  # From J500 Steering Assist with integrated sensors
       ("Lenkwinkel_1", 100),  # From J500 Steering Assist with integrated sensors
       ("Motor_3", 100),     # From J623 Engine control module
       ("Airbag_1", 50),     # From J234 Airbag control module
       ("Bremse_5", 50),     # From J104 ABS/ESP controller
-      ("GRA_Neu", 50),      # From J??? steering wheel control buttons
+      #("GRA_Neu", 50),      # From J??? steering wheel control buttons
       ("Kombi_1", 50),      # From J285 Instrument cluster
       ("Motor_2", 50),      # From J623 Engine control module
       ("Motor_5", 50),      # From J623 Engine control module
@@ -390,7 +392,7 @@ class CarState(CarStateBase):
       if CP.enableBsm:
         messages += PqExtraSignals.bsm_radar_messages
 
-    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam)
+    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam, enforce_checks=False)
 
 
 class MqbExtraSignals:

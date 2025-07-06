@@ -31,10 +31,11 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs = [get_safety_config(car.CarParams.SafetyModel.volkswagenPq)]
       ret.enableBsm = 0x3BA in fingerprint[0]  # SWA_1
 
-      if 0x440 in fingerprint[0] or docs:  # Getriebe_1
-        ret.transmissionType = TransmissionType.automatic
-      else:
-        ret.transmissionType = TransmissionType.manual
+      #if 0x440 in fingerprint[0] or docs:  # Getriebe_1
+      #  ret.transmissionType = TransmissionType.automatic
+      #else:
+      # Force Manual for UP! testing
+      ret.transmissionType = TransmissionType.manual
 
       if any(msg in fingerprint[1] for msg in (0x1A0, 0xC2)):  # Bremse_1, Lenkwinkel_1
         ret.networkLocation = NetworkLocation.gateway
@@ -47,7 +48,7 @@ class CarInterface(CarInterfaceBase):
       # It is documented in a four-part blog series:
       #   https://blog.willemmelching.nl/carhacking/2022/01/02/vw-part1/
       # Panda ALLOW_DEBUG firmware required.
-      ret.dashcamOnly = True
+      #ret.dashcamOnly = True
 
     else:
       # Set global MQB parameters
