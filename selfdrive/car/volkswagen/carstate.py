@@ -265,7 +265,7 @@ class CarState(CarStateBase):
     ret.leftBlinker, ret.rightBlinker = ret.leftBlinkerOn, ret.rightBlinkerOn = self.update_blinker_from_stalk(300, pt_cp.vl["Gate_Komf_1"]["GK1_Blinker_li"],
                                                                                                                       pt_cp.vl["Gate_Komf_1"]["GK1_Blinker_re"])
     self.button_events = self.create_button_events(pt_cp, self.CCP.BUTTONS)
-    #self.gra_stock_values = pt_cp.vl["GRA_Neu"]
+    self.gra_stock_values = pt_cp.vl["Motor_2"]
 
     # Additional safety checks performed in CarInterface.
     ret.espDisabled = bool(pt_cp.vl["Bremse_1"]["ESP_Passiv_getastet"])
