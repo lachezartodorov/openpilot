@@ -256,7 +256,8 @@ class CarState(CarStateBase):
 
     # Update ACC setpoint. When the setpoint reads as 255, the driver has not
     # yet established an ACC setpoint, so treat it as zero.
-    ret.cruiseState.speed = ext_cp.vl["ACC_GRA_Anzeige"]["ACA_V_Wunsch"] * CV.KPH_TO_MS
+     # FIXME: for now this is the CC setpoint, the radar setpoint is in ACC_GRA_Anziege.ACA_V_Wunsch
+    ret.cruiseState.speed = pt_cp.vl["Motor_2"]['Soll_Geschwindigkeit_bei_GRA_Be'] * CV.KPH_TO_MS
     if ret.cruiseState.speed > 70:  # 255 kph in m/s == no current setpoint
       ret.cruiseState.speed = 0
 
