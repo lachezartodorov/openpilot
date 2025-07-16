@@ -245,7 +245,7 @@ class CarState(CarStateBase):
     ret.stockAeb = False
 
     # Update ACC radar status.
-    self.acc_type = ext_cp.vl["ACC_System"]["ACS_Typ_ACC"]
+    self.acc_type = 0
     #ret.cruiseState.available = bool(pt_cp.vl["Motor_5"]["GRA_Hauptschalter"])
     ret.cruiseState.enabled = True if pt_cp.vl["Motor_2"]['GRA_Status'] in [1, 2] else False
     ret.cruiseState.available = ret.cruiseState.enabled  # TEST hack for UP!
