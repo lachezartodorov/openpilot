@@ -385,6 +385,7 @@ class CarState(CarStateBase):
       ("Kombi_01", 2),      # From J285 Instrument cluster
       ("Blinkmodi_01", 0),  # From J519 BCM (sent at 1Hz when no lights active, 50Hz when active)
       ("Kombi_03", 0),      # From J285 instrument cluster (not present on older cars, 1Hz when present)
+      ("ACC_02", 17),       # From J428 ACC radar control module
     ]
 
     # TODO: gear shift parsing
