@@ -385,8 +385,16 @@ class CarState(CarStateBase):
       ("Kombi_01", 2),      # From J285 Instrument cluster
       ("Blinkmodi_01", 0),  # From J519 BCM (sent at 1Hz when no lights active, 50Hz when active)
       ("Kombi_03", 0),      # From J285 instrument cluster (not present on older cars, 1Hz when present)
-      ("ACC_02", 17),       # From J428 ACC radar control module
     ]
+
+    if CP.networkLocation == NetworkLocation.fwdCamera:
+      # Radars are here on CANBUS.pt
+      if not CP.spFlags & VolkswagenFlagsSP.SP_CC_ONLY_NO_RADAR:
+        messages += MlbExtraSignals.fwd_radar_messages
+        if CP.spFlags & VolkswagenFlagsSP.SP_CC_ONLY:
+          messages.remove(("ACC_02", 17))
+      if CP.enableBsm:
+        messages += MlbExtraSignals.bsm_radar_messages
 
     # TODO: gear shift parsing
     # TODO: BSM parsing
@@ -404,7 +412,7 @@ class CarState(CarStateBase):
       ]
     else:
       if CP.enableBsm:
-        messages += MqbExtraSignals.bsm_radar_messages  # FIXME: switch this to MlbExtraSignals later
+        messages += MlbExtraSignals.bsm_radar_messages  
 
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam)
 
@@ -465,6 +473,17 @@ class MqbExtraSignals:
   fwd_radar_messages = [
     ("ACC_06", 50),                              # From J428 ACC radar control module
     ("ACC_10", 50),                              # From J428 ACC radar control module
+    ("ACC_02", 17),                              # From J428 ACC radar control module
+  ]
+  bsm_radar_messages = [
+    ("SWA_01", 20),                              # From J1086 Lane Change Assist
+  ]
+
+class MlbExtraSignals:
+  # Additional signal and message lists for optional or bus-portable controllers
+  fwd_radar_messages = [
+    #("ACC_06", 50),                              # From J428 ACC radar control module
+    #("ACC_10", 50),                              # From J428 ACC radar control module
     ("ACC_02", 17),                              # From J428 ACC radar control module
   ]
   bsm_radar_messages = [
