@@ -31,8 +31,12 @@ class CarControllerParams:
   STEER_DRIVER_FACTOR = 1                  # from dbc
 
   STEER_TIME_MAX = 360                     # Max time that EPS allows uninterrupted HCA steering control
+  STEER_TIME_BM = STEER_TIME_MAX - 120     # Attempts to mitigate the EPS max steer timer begin
   STEER_TIME_ALERT = STEER_TIME_MAX - 10   # If mitigation fails, time to soft disengage before EPS timer expires
+  STEER_LOW_TORQUE = STEER_MAX * 0.2       # Steer timer mitigation performed when torque output under 20%
+  STEER_TIME_LOW_TORQUE = 0.5              # Wait for this duration of STEER_LOW_TORQUE to begin mitigation
   STEER_TIME_STUCK_TORQUE = 1.9            # EPS limits same torque to 6 seconds, reset timer 3x within that period
+  STEER_TIME_RESET = 1.1                   # Duration of HCA disable needed for effective EPS timer reset
 
   DEFAULT_MIN_STEER_SPEED = 0.4            # m/s, newer EPS racks fault below this speed, don't show a low speed alert
 
@@ -75,25 +79,43 @@ class CarControllerParams:
     else:
       self.LDW_STEP = 10                  # LDW_02 message frequency 10Hz
       self.ACC_HUD_STEP = 6               # ACC_02 message frequency 16Hz
-      self.STEER_DRIVER_ALLOWANCE = 80    # Driver intervention threshold 0.8 Nm
-      self.STEER_DELTA_UP = 4             # Max HCA reached in 1.50s (STEER_MAX / (50Hz * 1.50))
-      self.STEER_DELTA_DOWN = 10          # Min HCA reached in 0.60s (STEER_MAX / (50Hz * 0.60))
       self.BTN_STEP = 3
 
-      if CP.transmissionType == TransmissionType.automatic:
-        self.shifter_values = can_define.dv["Getriebe_11"]["GE_Fahrstufe"]
-      elif CP.transmissionType == TransmissionType.direct:
-        self.shifter_values = can_define.dv["EV_Gearshift"]["GearPosition"]
       self.hca_status_values = can_define.dv["LH_EPS_03"]["EPS_HCA_Status"]
 
-      self.BUTTONS = [
-        Button(car.CarState.ButtonEvent.Type.setCruise, "GRA_ACC_01", "GRA_Tip_Setzen", [1]),
-        Button(car.CarState.ButtonEvent.Type.resumeCruise, "GRA_ACC_01", "GRA_Tip_Wiederaufnahme", [1]),
-        Button(car.CarState.ButtonEvent.Type.accelCruise, "GRA_ACC_01", "GRA_Tip_Hoch", [1]),
-        Button(car.CarState.ButtonEvent.Type.decelCruise, "GRA_ACC_01", "GRA_Tip_Runter", [1]),
-        Button(car.CarState.ButtonEvent.Type.cancel, "GRA_ACC_01", "GRA_Abbrechen", [1]),
-        Button(car.CarState.ButtonEvent.Type.gapAdjustCruise, "GRA_ACC_01", "GRA_Verstellung_Zeitluecke", [1]),
-      ]
+      if CP.flags & VolkswagenFlags.MLB:
+        self.STEER_DRIVER_ALLOWANCE = 60  # Driver intervention threshold 0.6 Nm
+        self.STEER_DELTA_UP = 10  # Max HCA reached in 0.60s (STEER_MAX / (50Hz * 0.60))
+        self.STEER_DELTA_DOWN = 10  # Min HCA reached in 0.60s (STEER_MAX / (50Hz * 0.60))
+
+        # TODO: populate shifter enums
+        self.shifter_values = None
+        self.BUTTONS = [
+          Button(car.CarState.ButtonEvent.Type.setCruise, "LS_01", "LS_Tip_Setzen", [1]),
+          Button(car.CarState.ButtonEvent.Type.resumeCruise, "LS_01", "LS_Tip_Wiederaufnahme", [1]),
+          Button(car.CarState.ButtonEvent.Type.accelCruise, "LS_01", "LS_Tip_Hoch", [1]),
+          Button(car.CarState.ButtonEvent.Type.decelCruise, "LS_01", "LS_Tip_Runter", [1]),
+          Button(car.CarState.ButtonEvent.Type.cancel, "LS_01", "LS_Abbrechen", [1]),
+          Button(car.CarState.ButtonEvent.Type.gapAdjustCruise, "LS_01", "LS_Verstellung_Zeitluecke", [1]),
+        ]
+      else:
+        self.STEER_DRIVER_ALLOWANCE = 80  # Driver intervention threshold 0.8 Nm
+        self.STEER_DELTA_UP = 4  # Max HCA reached in 1.50s (STEER_MAX / (50Hz * 1.50))
+        self.STEER_DELTA_DOWN = 10  # Min HCA reached in 0.60s (STEER_MAX / (50Hz * 0.60))
+
+        if CP.transmissionType == TransmissionType.automatic:
+          self.shifter_values = can_define.dv["Getriebe_11"]["GE_Fahrstufe"]
+        elif CP.transmissionType == TransmissionType.direct:
+          self.shifter_values = can_define.dv["EV_Gearshift"]["GearPosition"]
+
+        self.BUTTONS = [
+          Button(car.CarState.ButtonEvent.Type.setCruise, "GRA_ACC_01", "GRA_Tip_Setzen", [1]),
+          Button(car.CarState.ButtonEvent.Type.resumeCruise, "GRA_ACC_01", "GRA_Tip_Wiederaufnahme", [1]),
+          Button(car.CarState.ButtonEvent.Type.accelCruise, "GRA_ACC_01", "GRA_Tip_Hoch", [1]),
+          Button(car.CarState.ButtonEvent.Type.decelCruise, "GRA_ACC_01", "GRA_Tip_Runter", [1]),
+          Button(car.CarState.ButtonEvent.Type.cancel, "GRA_ACC_01", "GRA_Abbrechen", [1]),
+          Button(car.CarState.ButtonEvent.Type.gapAdjustCruise, "GRA_ACC_01", "GRA_Verstellung_Zeitluecke", [1]),
+        ]
 
       self.LDW_MESSAGES = {
         "none": 0,                            # Nothing to display
@@ -110,6 +132,7 @@ class CarControllerParams:
 
 class CANBUS:
   pt = 0
+  br = 1
   cam = 2
 
 
@@ -140,6 +163,17 @@ class VolkswagenFlags(IntFlag):
 
   # Static flags
   PQ = 2
+  MLB = 4
+
+
+@dataclass
+class VolkswagenMLBPlatformConfig(PlatformConfig):
+  dbc_dict: DbcDict = field(default_factory=lambda: dbc_dict('vw_mlb', None))
+  chassis_codes: set[str] = field(default_factory=set)
+  wmis: set[WMI] = field(default_factory=set)
+
+  def init(self):
+    self.flags |= VolkswagenFlags.MLB
 
 
 class VolkswagenFlagsSP(IntFlag):
@@ -372,6 +406,15 @@ class CAR(Platforms):
     chassis_codes={"8V", "FF"},
     wmis={WMI.AUDI_GERMANY_CAR, WMI.AUDI_SPORT},
   )
+  AUDI_A4_MK4 = VolkswagenMLBPlatformConfig( # Chassis FL
+    [
+      VWCarDocs("Audi A4 2015-16"),
+      VWCarDocs("Audi S4 2015-16"),
+    ],
+    VolkswagenCarSpecs(mass=1650, wheelbase=2.81),
+    chassis_codes={"FL"},
+    wmis={WMI.AUDI_GERMANY_CAR},
+  )
   AUDI_Q2_MK1 = VolkswagenMQBPlatformConfig(
     [VWCarDocs("Audi Q2 2018")],
     VolkswagenCarSpecs(mass=1205, wheelbase=2.61),
@@ -383,6 +426,13 @@ class CAR(Platforms):
     VolkswagenCarSpecs(mass=1623, wheelbase=2.68),
     chassis_codes={"8U", "F3", "FS"},
     wmis={WMI.AUDI_EUROPE_MPV, WMI.AUDI_GERMANY_CAR},
+  )
+  AUDI_Q5_MK1 = VolkswagenMLBPlatformConfig( # Chassis FL
+    [
+      VWCarDocs("Audi Q5 2008-2017"),
+    ],
+    VolkswagenCarSpecs(mass=1840, wheelbase=2.81),
+    wmis={WMI.AUDI_GERMANY_CAR},
   )
   SEAT_ATECA_MK1 = VolkswagenMQBPlatformConfig(
     [

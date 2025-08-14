@@ -6,7 +6,7 @@ from openpilot.common.conversions import Conversions as CV
 from openpilot.common.params import Params
 from openpilot.selfdrive.car import DT_CTRL, apply_driver_steer_torque_limits
 from openpilot.selfdrive.car.interfaces import CarControllerBase
-from openpilot.selfdrive.car.volkswagen import mqbcan, pqcan
+from openpilot.selfdrive.car.volkswagen import mlbcan, mqbcan, pqcan
 from openpilot.selfdrive.car.volkswagen.values import CANBUS, CarControllerParams, VolkswagenFlags
 from openpilot.selfdrive.controls.lib.drive_helpers import VOLKSWAGEN_V_CRUISE_MIN
 
@@ -23,10 +23,21 @@ class CarController(CarControllerBase):
     self.packer_pt = CANPacker(dbc_name)
     self.ext_bus = CANBUS.pt if CP.networkLocation == car.CarParams.NetworkLocation.fwdCamera else CANBUS.cam
 
+    if CP.flags & VolkswagenFlags.PQ:
+      self.CCS = pqcan
+    elif CP.flags & VolkswagenFlags.MLB:
+      self.CCS = mlbcan
+    else:
+      self.CCS = mqbcan
+
     self.apply_steer_last = 0
     self.gra_acc_counter_last = None
+    self.frame = 0
+    self.eps_timer_workaround = True  # For testing, replace with CP.carFingerprint in (PQ_CARS, MLB_CARS)
     self.eps_timer_soft_disable_alert = False
     self.hca_frame_timer_running = 0
+    self.hca_frame_timer_resetting = 0
+    self.hca_frame_low_torque = 0
     self.hca_frame_same_torque = 0
     self.last_button_frame = 0
 
@@ -78,6 +89,7 @@ class CarController(CarControllerBase):
     actuators = CC.actuators
     hud_control = CC.hudControl
     can_sends = []
+    output_steer = 0
 
     if not self.CP.pcmCruiseSpeed:
       if not self.last_speed_limit_sign_tap_prev and CS.params_list.last_speed_limit_sign_tap:
@@ -116,16 +128,33 @@ class CarController(CarControllerBase):
         else:
           self.hca_frame_same_torque = 0
         hca_enabled = abs(apply_steer) > 0
+        if self.eps_timer_workaround and self.hca_frame_timer_running >= self.CCP.STEER_TIME_BM / DT_CTRL:
+          if abs(apply_steer) <= self.CCP.STEER_LOW_TORQUE:
+            self.hca_frame_low_torque += self.CCP.STEER_STEP
+            if self.hca_frame_low_torque >= self.CCP.STEER_TIME_LOW_TORQUE / DT_CTRL:
+              hca_enabled = False
+          else:
+            self.hca_frame_low_torque = 0
+            if self.hca_frame_timer_resetting > 0:
+              apply_steer = 0
       else:
+        self.hca_frame_low_torque = 0
         hca_enabled = False
         apply_steer = 0
 
-      if not hca_enabled:
-        self.hca_frame_timer_running = 0
+      if hca_enabled:
+        output_steer = apply_steer
+        self.hca_frame_timer_resetting = 0
+      else:
+        output_steer = 0
+        self.hca_frame_timer_resetting += self.CCP.STEER_STEP
+        if self.hca_frame_timer_resetting >= 1.1 / DT_CTRL or not self.eps_timer_workaround:
+          self.hca_frame_timer_running = 0
+          apply_steer = 0
 
       self.eps_timer_soft_disable_alert = self.hca_frame_timer_running > self.CCP.STEER_TIME_ALERT / DT_CTRL
       self.apply_steer_last = apply_steer
-      can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.pt, apply_steer, hca_enabled))
+      can_sends.append(self.CCS.create_steering_control(self.packer_pt, CANBUS.pt, output_steer, hca_enabled))
 
       if self.CP.flags & VolkswagenFlags.STOCK_HCA_PRESENT:
         # Pacify VW Emergency Assist driver inactivity detection by changing its view of driver steering input torque
@@ -186,7 +215,7 @@ class CarController(CarControllerBase):
           elif self.acc_type == 1:
             self.cruise_button = 3 if self.cruise_button == 1 else 4  # resume, set
           if self.frame % self.CCP.BTN_STEP == 0:
-            can_sends.append(self.CCS.create_acc_buttons_control(self.packer_pt, CS.gra_stock_values, frame=(self.frame // self.CCP.BTN_STEP),
+            can_sends.append(self.CCS.create_acc_buttons_control(self.packer_pt, self.ext_bus, CS.gra_stock_values, frame=(self.frame // self.CCP.BTN_STEP),
                                                                  buttons=self.cruise_button, custom_stock_long=True))
             self.send_count += 1
         else:
@@ -194,7 +223,7 @@ class CarController(CarControllerBase):
         self.last_cruise_button = self.cruise_button
 
     new_actuators = actuators.as_builder()
-    new_actuators.steer = self.apply_steer_last / self.CCP.STEER_MAX
+    new_actuators.steer = output_steer / self.CCP.STEER_MAX
     new_actuators.steerOutputCan = self.apply_steer_last
 
     self.gra_acc_counter_last = CS.gra_stock_values["COUNTER"]
