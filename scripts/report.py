@@ -1,30 +1,115 @@
 #!/usr/bin/env python3
+
+import sys
+import os
+
+# Add the openpilot root directory to Python path for cron compatibility
+# This ensures the script can find the 'panda' module regardless of how it's invoked
+script_dir = os.path.dirname(os.path.abspath(__file__))
+openpilot_root = os.path.dirname(script_dir)  # Go up one level from scripts/ to root
+if openpilot_root not in sys.path:
+    sys.path.insert(0, openpilot_root)
+
 import time
 import json
 from panda import Panda
 import urllib.request
 import urllib.error
 
+dashboard = {
+    "soc": -1,
+    "range": -1,
+    "charging": "-",
+    "plugged_in": "-",
+    "doors": "-",
+    "battery": -1,
+}
+
+# --- DECODERS ---
+
+def decode_61A_soc(data):
+    # ID: 0x61A (Ladegeraet_1) - SOC
+    if len(data) >= 8:
+        dashboard["soc"] = data[7] / 2.0
+
+def decode_52D_range(data):
+    # ID: 0x52D (Range)
+    if len(data) >= 2:
+        dashboard["range"] = data[0]
+
+def decode_61C_charge_status(data):
+    # ID: 0x61C (Charger Status)
+    if len(data) >= 3:
+        # Byte 1: Plug State
+        # 0xF0 = Unplugged / Idle
+        # 0x03/0x04 = Connected
+        plug_byte = data[1]
+
+        # New Logic: Only say "Yes" if it looks like a valid cable (small numbers)
+        if plug_byte in [0x03, 0x04, 0x01]:
+             dashboard["plugged_in"] = "YES"
+        else:
+             dashboard["plugged_in"] = "No"
+
+        # Byte 2: Charging State
+        # 0x0F = Standby/Done
+        # < 7 = Active
+        charge_byte = data[2]
+        dashboard["charging"] = "Yes" if charge_byte < 7 else "No"
+
+def decode_470_doors(data):
+    # ID: 0x470 (Doors) - You said this works!
+    if len(data) >= 2:
+        val = data[1]
+        # Bitmask check
+        if (val & 0x1F) > 0:
+            dashboard["doors"] = "OPEN"
+        else:
+            dashboard["doors"] = "Closed"
+
+# Map IDs to Functions
+decoders = {
+    0x61A: decode_61A_soc,
+    0x52D: decode_52D_range,
+    0x61C: decode_61C_charge_status,
+    0x470: decode_470_doors,
+}
+
+
 def reporter():
     try:
+        i = 0
         p = Panda()
         print("Starting EV Reporter")
 
         while True:
+            i += 1
+
             # Read Hardware Voltage (The internal sensor)
             # The panda health dictionary contains 'voltage' in millivolts
-            voltage = 0.0
             health = p.health()
             if 'voltage' in health:
                 try:
-                    voltage = float(health['voltage']) / 1000.0
+                    dashboard["battery"] = float(health['voltage']) / 1000.0
                 except Exception:
-                    voltage = 0.0
+                    dashboard["battery"] = 0.0
 
-            if voltage > 0:
+            # Read CAN
+            incoming = p.can_recv()
+            for msg in incoming:
+                addr = msg[0]
+                data = msg[1]
+                if addr in decoders:
+                    try:
+                        decoders[addr](data)
+                    except:
+                        pass
+
+            if i > 30 or (dashboard["battery"] > 0 and dashboard["range"] > 0):
+                print(f"Sending data: {dashboard}")
                 # Do network request: POST telemetry to ThingsBoard demo instance
                 url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
-                payload = json.dumps({"battery": voltage}).encode("utf-8")
+                payload = json.dumps(dashboard).encode("utf-8")
                 req = urllib.request.Request(
                     url,
                     data=payload,
@@ -46,7 +131,7 @@ def reporter():
 
                 break
 
-            time.sleep(0.1)
+            time.sleep(0.3)
 
     except KeyboardInterrupt:
         print("\nStopped.")
