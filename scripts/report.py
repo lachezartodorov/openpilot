@@ -69,11 +69,11 @@ decoders = {
 def main():
     try:
         i = 0
-        sleepTime = 0.3
         p = Panda()
         print("Starting EV Reporter")
 
         while True:
+            sleepTime = 0.3 # Quick checks for CAN messages
             i += 1
 
             # Read Hardware Voltage (The internal sensor)
@@ -98,8 +98,6 @@ def main():
 
             if i > 30 or (dashboard["battery"] > 0 and dashboard["range"] > 0):
                 print(f"Sending data: {dashboard}")
-                sleepTime = 120
-                
                 # Do network request: POST telemetry to ThingsBoard demo instance
                 url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
                 payload = json.dumps(dashboard).encode("utf-8")
@@ -121,7 +119,9 @@ def main():
                     print(f"URLError posting telemetry: {ue.reason}")
                 except Exception as e:
                     print(f"Unexpected error posting telemetry: {e}")
-
+                
+                sleepTime = 120 # Data is collected, wait for next window
+                print("Sleeping till next update window")
 
             time.sleep(sleepTime)
 
