@@ -120,7 +120,8 @@ def main():
                     print(f"URLError posting telemetry: {ue.reason}")
                 except Exception as e:
                     print(f"Unexpected error posting telemetry: {e}")
-                
+
+                i = 0
                 sleepTime = 120 # Data is collected, wait for next window
                 print("Sleeping till next update window")
 
