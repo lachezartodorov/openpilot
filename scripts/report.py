@@ -11,8 +11,10 @@ import traceback
 # Setup logging to a file in /data/
 logging.basicConfig(
     filename='/data/log/report_script_internal.log',
-    level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s: %(message)s'
+    level=logging.INFO,
+    filemode='a',
+    format='%(asctime)s %(levelname)s: %(message)s',
+    force=True
 )
 
 dashboard = {
@@ -109,7 +111,7 @@ def main():
 
             # 67 iterations = 20.1 Seconds
             if i > 67 or (dashboard["battery"] > 0 and dashboard["range"] > 0):
-                print(f"Sending data: {dashboard}")
+                logging.info(f"Sending data: {dashboard}")
                 # Do network request: POST telemetry to ThingsBoard demo instance
                 url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
                 payload = json.dumps(dashboard).encode("utf-8")
@@ -123,14 +125,14 @@ def main():
                     with urllib.request.urlopen(req, timeout=10) as resp:
                         status = resp.getcode()
                         body = resp.read().decode("utf-8", errors="replace")
-                        print(f"Posted battery={voltage} V -> status={status}, body={body}")
+                        logging.info(f"Posted battery={voltage} V -> status={status}, body={body}")
                 except urllib.error.HTTPError as he:
                     err_body = he.read().decode("utf-8", errors="replace") if hasattr(he, "read") else ""
-                    logging.info(f"HTTPError posting telemetry: {he.code} {he.reason}. Body: {err_body}")
+                    logging.error(f"HTTPError posting telemetry: {he.code} {he.reason}. Body: {err_body}")
                 except urllib.error.URLError as ue:
-                    logging.info(f"URLError posting telemetry: {ue.reason}")
+                    logging.error(f"URLError posting telemetry: {ue.reason}")
                 except Exception as e:
-                    logging.info(f"Unexpected error posting telemetry: {e}")
+                    logging.error(f"Unexpected error posting telemetry: {e}")
 
                 i = 0
                 sleepTime = 120 # Data is collected, wait for next window
@@ -141,7 +143,7 @@ def main():
     except KeyboardInterrupt:
         logging.info("\nStopped.")
     except Exception as e:
-        logging.info(f"\nError: {e}")
+        logging.error(f"\nError: {e}")
 
 if __name__ == "__main__":
     main()
