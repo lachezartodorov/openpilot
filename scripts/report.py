@@ -10,7 +10,7 @@ import traceback
 
 # Setup logging to a file in /data/
 logging.basicConfig(
-    filename='/data/report_script_internal.log',
+    filename='/data/log/report_script_internal.log',
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s: %(message)s'
 )
