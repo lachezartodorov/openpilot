@@ -66,7 +66,7 @@ decoders = {
 }
 
 
-def reporter():
+def main():
     try:
         i = 0
         sleepTime = 0.3
@@ -131,4 +131,4 @@ def reporter():
         print(f"\nError: {e}")
 
 if __name__ == "__main__":
-    reporter()
+    main()
