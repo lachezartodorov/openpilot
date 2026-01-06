@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-
-# Add the openpilot root directory to Python path for cron compatibility
-# This ensures the script can find the 'panda' module regardless of how it's invoked
-script_dir = os.path.dirname(os.path.abspath(__file__))
-openpilot_root = os.path.dirname(script_dir)  # Go up one level from scripts/ to root
-if openpilot_root not in sys.path:
-    sys.path.insert(0, openpilot_root)
-
 import time
 import json
 from panda import Panda
@@ -79,6 +69,7 @@ decoders = {
 def reporter():
     try:
         i = 0
+        sleepTime = 0.3
         p = Panda()
         print("Starting EV Reporter")
 
@@ -107,6 +98,8 @@ def reporter():
 
             if i > 30 or (dashboard["battery"] > 0 and dashboard["range"] > 0):
                 print(f"Sending data: {dashboard}")
+                sleepTime = 120
+                
                 # Do network request: POST telemetry to ThingsBoard demo instance
                 url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
                 payload = json.dumps(dashboard).encode("utf-8")
@@ -129,9 +122,8 @@ def reporter():
                 except Exception as e:
                     print(f"Unexpected error posting telemetry: {e}")
 
-                break
 
-            time.sleep(0.3)
+            time.sleep(sleepTime)
 
     except KeyboardInterrupt:
         print("\nStopped.")
