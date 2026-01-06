@@ -96,7 +96,8 @@ def main():
                     except:
                         pass
 
-            if i > 30 or (dashboard["battery"] > 0 and dashboard["range"] > 0):
+            # 67 iterations = 20.1 Seconds
+            if i > 67 or (dashboard["battery"] > 0 and dashboard["range"] > 0):
                 print(f"Sending data: {dashboard}")
                 # Do network request: POST telemetry to ThingsBoard demo instance
                 url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
