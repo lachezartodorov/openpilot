@@ -5,6 +5,15 @@ import json
 from panda import Panda
 import urllib.request
 import urllib.error
+import logging
+import traceback
+
+# Setup logging to a file in /data/
+logging.basicConfig(
+    filename='/data/report_script_internal.log',
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s: %(message)s'
+)
 
 dashboard = {
     "soc": -1,
@@ -67,10 +76,12 @@ decoders = {
 
 
 def main():
+    logging.info("Script started!")
+    time.sleep(10) # Make sure everything is loaded for the Panda
     try:
         i = 0
         p = Panda()
-        print("Starting EV Reporter")
+        logging.info("Starting EV Reporter")
 
         while True:
             sleepTime = 0.3 # Quick checks for CAN messages
@@ -115,22 +126,22 @@ def main():
                         print(f"Posted battery={voltage} V -> status={status}, body={body}")
                 except urllib.error.HTTPError as he:
                     err_body = he.read().decode("utf-8", errors="replace") if hasattr(he, "read") else ""
-                    print(f"HTTPError posting telemetry: {he.code} {he.reason}. Body: {err_body}")
+                    logging.info(f"HTTPError posting telemetry: {he.code} {he.reason}. Body: {err_body}")
                 except urllib.error.URLError as ue:
-                    print(f"URLError posting telemetry: {ue.reason}")
+                    logging.info(f"URLError posting telemetry: {ue.reason}")
                 except Exception as e:
-                    print(f"Unexpected error posting telemetry: {e}")
+                    logging.info(f"Unexpected error posting telemetry: {e}")
 
                 i = 0
                 sleepTime = 120 # Data is collected, wait for next window
-                print("Sleeping till next update window")
+                logging.info("Sleeping till next update window")
 
             time.sleep(sleepTime)
 
     except KeyboardInterrupt:
-        print("\nStopped.")
+        logging.info("\nStopped.")
     except Exception as e:
-        print(f"\nError: {e}")
+        logging.info(f"\nError: {e}")
 
 if __name__ == "__main__":
     main()
