@@ -6,9 +6,11 @@ from panda import Panda
 import urllib.request
 import urllib.error
 import logging
-import traceback
+import sys
 
 # Setup logging to a file in /data/
+# Added force=True and unbuffered stderr to ensure logs are written during offroad
+sys.stderr.reconfigure(line_buffering=True)
 logging.basicConfig(
     filename='/data/log/report_script_internal.log',
     level=logging.INFO,
@@ -24,127 +26,128 @@ dashboard = {
     "plugged_in": "-",
     "doors": "-",
     "battery": -1,
+    "odometer": -1,
+    "temp": -1,
 }
 
 # --- DECODERS ---
 
+def decode_470_lock_status(data):
+    # ID: 0x470 (Gate_Komf_1)
+    # Byte 1 typically contains door/lock states in VW PQ
+    if len(data) >= 2:
+        # Check bits for "Locked" vs "Unlocked" based on your log transitions
+        # 0x00 at Byte 1 often means Locked, 0x03 or higher means Unlocked/Open
+        status_byte = data[1]
+        if status_byte == 0x00:
+            dashboard["doors"] = "Locked"
+        else:
+            dashboard["doors"] = "Unlocked/Open"
+
 def decode_61A_soc(data):
-    # ID: 0x61A (Ladegeraet_1) - SOC
-    if len(data) >= 8:
-        dashboard["soc"] = data[7] / 2.0
+    # ID: 0x61A (Ladegeraet_1)
+    # Based on VW PQ DBC: Byte 0 * 0.5 = SOC %
+    if len(data) >= 1:
+        dashboard["soc"] = data[0] * 0.5
 
 def decode_52D_range(data):
     # ID: 0x52D (Range)
-    if len(data) >= 2:
+    if len(data) >= 1:
         dashboard["range"] = data[0]
+
+def decode_527_temp(data):
+    # ID: 0x527 (Klima_1)
+    # Typically Byte 5 is Ambient Temp: (Value * 0.5) - 40
+    if len(data) >= 6:
+        dashboard["temp"] = (data[5] * 0.5) - 40
+
+def decode_658_odometer(data):
+    # ID: 0x658 (Odometer)
+    # Bytes 1, 2, and 3 form a 24-bit integer
+    if len(data) >= 4:
+        dashboard["odometer"] = (data[3] << 16) | (data[2] << 8) | data[1]
 
 def decode_61C_charge_status(data):
     # ID: 0x61C (Charger Status)
     if len(data) >= 3:
-        # Byte 1: Plug State
-        # 0xF0 = Unplugged / Idle
-        # 0x03/0x04 = Connected
         plug_byte = data[1]
-
-        # New Logic: Only say "Yes" if it looks like a valid cable (small numbers)
-        if plug_byte in [0x03, 0x04, 0x01]:
-             dashboard["plugged_in"] = "YES"
-        else:
-             dashboard["plugged_in"] = "No"
-
-        # Byte 2: Charging State
-        # 0x0F = Standby/Done
-        # < 7 = Active
-        charge_byte = data[2]
-        dashboard["charging"] = "Yes" if charge_byte < 7 else "No"
-
-def decode_470_doors(data):
-    # ID: 0x470 (Doors) - You said this works!
-    if len(data) >= 2:
-        val = data[1]
-        # Bitmask check
-        if (val & 0x1F) > 0:
-            dashboard["doors"] = "OPEN"
-        else:
-            dashboard["doors"] = "Closed"
-
-# Map IDs to Functions
-decoders = {
-    0x61A: decode_61A_soc,
-    0x52D: decode_52D_range,
-    0x61C: decode_61C_charge_status,
-    0x470: decode_470_doors,
-}
-
+        # 0xF0 = Unplugged, 0x03/0x04 = Connected
+        dashboard["plugged_in"] = "Yes" if plug_byte < 0xF0 else "No"
+        # Simple charging check
+        dashboard["charging"] = "Yes" if dashboard["plugged_in"] == "Yes" and data[2] > 0 else "No"
 
 def main():
-    logging.info("Script started!")
-    time.sleep(10) # Make sure everything is loaded for the Panda
+    logging.info("Reporting script started with full decoder set.")
     try:
-        i = 0
-        p = Panda()
-        logging.info("Starting EV Reporter")
+        # Bus 1 is where we wired the Comfort CAN
+        BUS_COMFORT = 1
 
         while True:
-            sleepTime = 0.1 # Quick checks for CAN messages
-            i += 1
+            try:
+                p = Panda()
+                p.set_safety_mode(Panda.SAFETY_SILENT)
+            except Exception as e:
+                logging.error(f"Panda connection failed: {e}. Retrying in 30s...")
+                time.sleep(30)
+                continue
 
-            # Read Hardware Voltage (The internal sensor)
-            # The panda health dictionary contains 'voltage' in millivolts
-            health = p.health()
-            if 'voltage' in health:
-                try:
-                    dashboard["battery"] = float(health['voltage']) / 1000.0
-                except Exception:
-                    dashboard["battery"] = 0.0
+            i = 0
+            # Sample for ~3 seconds to catch all messages
+            while i < 300:
+                can_recv = p.can_recv()
+                for addr, _, dat, src in can_recv:
+                    if src == BUS_COMFORT:
+                        if addr == 0x470:
+                            decode_470_lock_status(dat)
+                        elif addr == 0x61A:
+                            decode_61A_soc(dat)
+                        elif addr == 0x52D:
+                            decode_52D_range(dat)
+                        elif addr == 0x527:
+                            decode_527_temp(dat)
+                        elif addr == 0x658:
+                            decode_658_odometer(dat)
+                        elif addr == 0x61C:
+                            decode_61C_charge_status(dat)
 
-            # Read CAN
-            incoming = p.can_recv()
-            for msg in incoming:
-                addr = msg[0]
-                data = msg[1]
-                if addr in decoders:
-                    try:
-                        decoders[addr](data)
-                    except:
-                        pass
+                i += 1
+                time.sleep(0.01)
 
-            range_check = dashboard["range"] != 254 and dashboard["range"] > 0
-            # 600 iterations = 60 Seconds
-            if i > 600 or (dashboard["battery"] > 0 and range_check and dashboard["soc"] > 0):
-                logging.info(f"Sending data: {dashboard}")
-                # Do network request: POST telemetry to ThingsBoard demo instance
-                url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
-                payload = json.dumps(dashboard).encode("utf-8")
-                req = urllib.request.Request(
-                    url,
-                    data=payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                try:
-                    with urllib.request.urlopen(req, timeout=10) as resp:
-                        status = resp.getcode()
-                        body = resp.read().decode("utf-8", errors="replace")
-                        logging.info(f"Posted battery={voltage} V -> status={status}, body={body}")
-                except urllib.error.HTTPError as he:
-                    err_body = he.read().decode("utf-8", errors="replace") if hasattr(he, "read") else ""
-                    logging.error(f"HTTPError posting telemetry: {he.code} {he.reason}. Body: {err_body}")
-                except urllib.error.URLError as ue:
-                    logging.error(f"URLError posting telemetry: {ue.reason}")
-                except Exception as e:
-                    logging.error(f"Unexpected error posting telemetry: {e}")
+            # Get 12V Battery Voltage from Panda health
+            try:
+                h = p.health()
+                voltage = h['voltage'] / 1000.0
+                dashboard["battery"] = round(voltage, 2)
+            except:
+                voltage = -1
 
-                i = 0
-                sleepTime = 300 # Data is collected, wait for next window
-                logging.info("Sleeping till next update window")
+            # Prepare Telemetry
+            url = "http://your-server-ip/api/telemetry"
+            payload = json.dumps(dashboard).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
 
-            time.sleep(sleepTime)
+            try:
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    logging.info(f"Sent: SOC={dashboard['soc']}%, Range={dashboard['range']}km, Doors={dashboard['doors']}, Temp={dashboard['temp']}C")
+            except Exception as e:
+                logging.error(f"Post failed: {e}")
+
+            # Close panda to allow other processes if necessary, then sleep
+            p.close()
+
+            # Wait 5 minutes before next update to save 12V battery
+            logging.info("Sleeping for 5 minutes...")
+            time.sleep(300)
 
     except KeyboardInterrupt:
-        logging.info("\nStopped.")
+        logging.info("Stopped by user.")
     except Exception as e:
-        logging.error(f"\nError: {e}")
+        logging.error(f"Fatal Error: {e}")
 
 if __name__ == "__main__":
     main()
