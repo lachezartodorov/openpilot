@@ -86,7 +86,7 @@ def main():
         logging.info("Starting EV Reporter")
 
         while True:
-            sleepTime = 0.3 # Quick checks for CAN messages
+            sleepTime = 0.1 # Quick checks for CAN messages
             i += 1
 
             # Read Hardware Voltage (The internal sensor)
@@ -109,8 +109,9 @@ def main():
                     except:
                         pass
 
-            # 67 iterations = 20.1 Seconds
-            if i > 67 or (dashboard["battery"] > 0 and dashboard["range"] > 0):
+            range_check = dashboard["range"] != 254 and dashboard["range"] > 0
+            # 600 iterations = 60 Seconds
+            if i > 600 or (dashboard["battery"] > 0 and range_check and dashboard["soc"] > 0):
                 logging.info(f"Sending data: {dashboard}")
                 # Do network request: POST telemetry to ThingsBoard demo instance
                 url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
@@ -135,7 +136,7 @@ def main():
                     logging.error(f"Unexpected error posting telemetry: {e}")
 
                 i = 0
-                sleepTime = 120 # Data is collected, wait for next window
+                sleepTime = 300 # Data is collected, wait for next window
                 logging.info("Sleeping till next update window")
 
             time.sleep(sleepTime)
