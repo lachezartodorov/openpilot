@@ -10,43 +10,39 @@ def main():
         logging.info("Connecting to Panda...")
         p = Panda()
 
-        # --- CRITICAL FIX 1: SET BAUD RATE ---
-        # Comfort CAN is 100kbps. We MUST force the Panda to this speed.
-        logging.info("Setting Bus 1 to 100kbps...")
+        # Ensure Bus 1 (Comfort) is at the correct 100kbps speed
         p.set_can_speed_kbps(1, 100)
-
-        # Set safety to allow output
         p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
 
         BUS = 1
 
-        # --- CRITICAL FIX 2: NETWORK MANAGEMENT (NM) WAKEUP ---
-        # ID 0x320 is the Gateway's own 'Wakeup/Status' ID.
-        # Sending this mimics the Gateway telling modules to stay awake.
-        nm_wakeup_id = 0x320
+        # 0x320: Network Management (NM) Wakeup - mimics the Gateway being active
+        nm_id = 0x320
         nm_data = b"\x01\x00\x00\x01\x00\x00\x00\x80"
 
-        logging.info("Step 1: Flooding Network Management to wake the Gateway...")
-        for _ in range(50): # Send for 0.5 seconds
-            p.can_send(nm_wakeup_id, nm_data, BUS)
+        # 0x69E: Remote AC Start Command
+        ac_id = 0x69E
+        ac_data = b"\x01\x00\x00\x00\x00\x00\x00\x00"
+
+        logging.info("Step 1: Initial Wakeup Burst...")
+        for _ in range(100):
+            p.can_send(nm_id, nm_data, BUS)
             time.sleep(0.01)
 
-        # --- STEP 2: THE AC COMMAND ---
-        # We will send the AC command for a longer duration (5 seconds)
-        ac_start_id = 0x69E
-        ac_start_data = b"\x01\x00\x00\x00\x00\x00\x00\x00"
+        # Step 2: The Long Hold (Crucial for the 17-second delay)
+        logging.info("Step 2: Sending AC Start command. This will take 30 seconds...")
+        logging.info("Listen for the High Voltage contactors (loud click) around 15-20s.")
 
-        logging.info("Step 2: Sending AC Start command (0x69E)...")
         start_time = time.time()
-        while time.time() - start_time < 5.0:
-            # We keep sending the NM message in the background to keep the bus awake
-            p.can_send(nm_wakeup_id, nm_data, BUS)
+        while time.time() - start_time < 30.0:
+            # Send both messages to keep the bus 'alive' while requesting AC
+            p.can_send(nm_id, nm_data, BUS)
+            p.can_send(ac_id, ac_data, BUS)
 
-            # Send the actual AC command
-            p.can_send(ac_start_id, ac_start_data, BUS)
-            time.sleep(0.05)
+            # Send at 10Hz (every 100ms) to avoid flooding but stay persistent
+            time.sleep(0.1)
 
-        logging.info("Done. Check if the AC LED is on or if you hear the compressor.")
+        logging.info("Sequence complete. Wait another 10s to see if the fans start.")
         p.close()
 
     except Exception as e:
