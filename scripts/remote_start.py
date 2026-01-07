@@ -6,11 +6,8 @@ from panda import Panda
 
 # Setup logging
 logging.basicConfig(
-    filename='/data/log/remote_start.log',
     level=logging.INFO,
-    filemode='a',
-    format='%(asctime)s %(levelname)s: %(message)s',
-    force=True
+    format='%(asctime)s %(levelname)s: %(message)s'
 )
 
 def main():
@@ -19,39 +16,41 @@ def main():
         logging.info("Connecting to Panda...")
         p = Panda()
 
+        # IMPORTANT: Set safety mode to allow sending
+        # 0x1337 is 'SAFETY_ALLOUTPUT', which allows manual CAN injection
+        p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
+
         # We use Bus 1 (Comfort CAN) for these commands
         BUS = 1
 
         # 1. THE WAKE-UP COMMAND
         # Mimics pushing the physical 'Lock' button on the door to wake the BCM/Gateway
-        # ID: 0x291, Byte 6: 0x09
-        wake_msg = [0x291, 0, b"\x00\x00\x00\x00\x00\x00\x09\x00", BUS]
+        # Structure: [ID, Data (bytes), Bus]
+        wake_msg_id = 0x291
+        wake_msg_data = b"\x00\x00\x00\x00\x00\x00\x09\x00"
 
         logging.info("Step 1: Sending Wake-up command (Mimic Lock)...")
         for _ in range(10):
-            p.can_send(*wake_msg)
+            p.can_send(wake_msg_id, wake_msg_data, BUS)
             time.sleep(0.01)
 
-        # Wait 1.5 seconds for the Gateway to fully stabilize and modules to check-in
-        # You saw in your logs that it takes about this long for the bus to 'burst'
+        # Wait 1.5 seconds for the Gateway to fully stabilize
         time.sleep(1.5)
 
         # 2. THE AC START COMMAND
         # ID: 0x69E (Standard VW PQ Remote AC Start)
-        # Byte 0: 0x01 (Activate)
-        ac_start_msg = [0x69E, 0, b"\x01\x00\x00\x00\x00\x00\x00\x00", BUS]
+        ac_start_id = 0x69E
+        ac_start_data = b"\x01\x00\x00\x00\x00\x00\x00\x00"
 
         logging.info("Step 2: Sending AC Start command...")
-        # We send this for 3 seconds because the car often needs to see a
-        # persistent signal to verify it isn't a random glitch.
+        # Send for 3 seconds to ensure the car accepts the request
         start_time = time.time()
         while time.time() - start_time < 3.0:
-            p.can_send(*ac_start_msg)
+            p.can_send(ac_start_id, ac_start_data, BUS)
             time.sleep(0.05) # 20Hz frequency
 
         logging.info("Commands sent successfully.")
 
-        # Clean up
         p.close()
 
     except Exception as e:
