@@ -1,61 +1,56 @@
 #!/usr/bin/env python3
-
 import time
 import logging
 from panda import Panda
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 def main():
     try:
-        # Initialize Panda
         logging.info("Connecting to Panda...")
         p = Panda()
 
-        # IMPORTANT: Set safety mode to allow sending
-        # 0x1337 is 'SAFETY_ALLOUTPUT', which allows manual CAN injection
+        # --- CRITICAL FIX 1: SET BAUD RATE ---
+        # Comfort CAN is 100kbps. We MUST force the Panda to this speed.
+        logging.info("Setting Bus 1 to 100kbps...")
+        p.set_can_speed_kbps(1, 100)
+
+        # Set safety to allow output
         p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
 
-        # We use Bus 1 (Comfort CAN) for these commands
         BUS = 1
 
-        # 1. THE WAKE-UP COMMAND
-        # Mimics pushing the physical 'Lock' button on the door to wake the BCM/Gateway
-        # Structure: [ID, Data (bytes), Bus]
-        wake_msg_id = 0x291
-        wake_msg_data = b"\x00\x00\x00\x00\x00\x00\x09\x00"
+        # --- CRITICAL FIX 2: NETWORK MANAGEMENT (NM) WAKEUP ---
+        # ID 0x320 is the Gateway's own 'Wakeup/Status' ID.
+        # Sending this mimics the Gateway telling modules to stay awake.
+        nm_wakeup_id = 0x320
+        nm_data = b"\x01\x00\x00\x01\x00\x00\x00\x80"
 
-        logging.info("Step 1: Sending Wake-up command (Mimic Lock)...")
-        for _ in range(10):
-            p.can_send(wake_msg_id, wake_msg_data, BUS)
+        logging.info("Step 1: Flooding Network Management to wake the Gateway...")
+        for _ in range(50): # Send for 0.5 seconds
+            p.can_send(nm_wakeup_id, nm_data, BUS)
             time.sleep(0.01)
 
-        # Wait 1.5 seconds for the Gateway to fully stabilize
-        time.sleep(1.5)
-
-        # 2. THE AC START COMMAND
-        # ID: 0x69E (Standard VW PQ Remote AC Start)
+        # --- STEP 2: THE AC COMMAND ---
+        # We will send the AC command for a longer duration (5 seconds)
         ac_start_id = 0x69E
         ac_start_data = b"\x01\x00\x00\x00\x00\x00\x00\x00"
 
-        logging.info("Step 2: Sending AC Start command...")
-        # Send for 3 seconds to ensure the car accepts the request
+        logging.info("Step 2: Sending AC Start command (0x69E)...")
         start_time = time.time()
-        while time.time() - start_time < 3.0:
+        while time.time() - start_time < 5.0:
+            # We keep sending the NM message in the background to keep the bus awake
+            p.can_send(nm_wakeup_id, nm_data, BUS)
+
+            # Send the actual AC command
             p.can_send(ac_start_id, ac_start_data, BUS)
-            time.sleep(0.05) # 20Hz frequency
+            time.sleep(0.05)
 
-        logging.info("Commands sent successfully.")
-
+        logging.info("Done. Check if the AC LED is on or if you hear the compressor.")
         p.close()
 
     except Exception as e:
-        logging.error(f"Failed to execute remote start: {e}")
-        logging.error("Make sure openpilot (pandad) is not running!")
+        logging.error(f"Error: {e}")
 
 if __name__ == "__main__":
     main()
