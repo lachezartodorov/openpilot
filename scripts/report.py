@@ -41,11 +41,19 @@ def decode_470_lock_status(data):
         # 0x00 at Byte 1 often means Locked, 0x03 or higher means Unlocked/Open
         logging.info(f"Doors byte: {data[1]}")
         status_byte = data[1]
-        if status_byte == 0x00:
+        if status_byte == 0:
             dashboard["doors"] = "Closed"
+        else if status_byte == 1:
+            dashboard["doors"] = "Driver Door"
+        else if status_byte == 2:
+            dashboard["doors"] = "Passanger Door"
+        else if status_byte == 7:
+            dashboard["doors"] = "Back Left Door"
+        else if status_byte == 8:
+            dashboard["doors"] = "Back Right Door"
         else:
-            dashboard["doors"] = "Open"
-
+            dashboard["doors"] = "Something is Open"
+          
 def decode_61A_soc(data):
     # ID: 0x61A (Ladegeraet_1)
     # Based on VW PQ DBC: Byte 0 * 0.5 = SOC %
