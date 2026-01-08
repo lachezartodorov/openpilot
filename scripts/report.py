@@ -39,7 +39,6 @@ def decode_470_lock_status(data):
     if len(data) >= 2:
         # Check bits for "Locked" vs "Unlocked" based on your log transitions
         # 0x00 at Byte 1 often means Locked, 0x03 or higher means Unlocked/Open
-        logging.info(f"Doors byte: {data[1]}")
         status_byte = data[1]
         if status_byte == 0:
             dashboard["doors"] = "Closed"
@@ -86,7 +85,7 @@ def decode_61C_charge_status(data):
         # 0xF0 = Unplugged, 0x03/0x04 = Connected
         dashboard["plugged_in"] = "Yes" if plug_byte < 0xF0 else "No"
         # Simple charging check
-        logging.info(f"Charging byte: {data[2]}")
+        # logging.info(f"Charging byte: {data[2]}")
         dashboard["charging"] = "Yes" if dashboard["plugged_in"] == "Yes" and data[2] < 7 else "No"
 
 def main():
