@@ -39,11 +39,12 @@ def decode_470_lock_status(data):
     if len(data) >= 2:
         # Check bits for "Locked" vs "Unlocked" based on your log transitions
         # 0x00 at Byte 1 often means Locked, 0x03 or higher means Unlocked/Open
+        logging.info(f"Doors byte: {data[1]}")
         status_byte = data[1]
         if status_byte == 0x00:
-            dashboard["doors"] = "Locked"
+            dashboard["doors"] = "Closed"
         else:
-            dashboard["doors"] = "Unlocked/Open"
+            dashboard["doors"] = "Open"
 
 def decode_61A_soc(data):
     # ID: 0x61A (Ladegeraet_1)
