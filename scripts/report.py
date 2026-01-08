@@ -122,7 +122,7 @@ def main():
                 voltage = -1
 
             # Prepare Telemetry
-            url = "http://your-server-ip/api/telemetry"
+            url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
             payload = json.dumps(dashboard).encode("utf-8")
             req = urllib.request.Request(
                 url,
