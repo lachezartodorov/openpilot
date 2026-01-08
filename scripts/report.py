@@ -42,13 +42,13 @@ def decode_470_lock_status(data):
         status_byte = data[1]
         if status_byte == 0:
             dashboard["doors"] = "Closed"
-        else if status_byte == 1:
+        elif status_byte == 1:
             dashboard["doors"] = "Driver Door"
-        else if status_byte == 2:
+        elif status_byte == 2:
             dashboard["doors"] = "Passanger Door"
-        else if status_byte == 7:
+        elif status_byte == 7:
             dashboard["doors"] = "Back Left Door"
-        else if status_byte == 8:
+        elif status_byte == 8:
             dashboard["doors"] = "Back Right Door"
         else:
             dashboard["doors"] = "Something is Open"
