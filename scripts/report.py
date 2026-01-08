@@ -82,9 +82,6 @@ def decode_61C_charge_status(data):
 def main():
     logging.info("Reporting script started with full decoder set.")
     try:
-        # Bus 1 is where we wired the Comfort CAN
-        BUS_COMFORT = 1
-
         while True:
             try:
                 p = Panda()
@@ -98,20 +95,19 @@ def main():
             # Sample for ~20 seconds to catch all messages
             while i < 400:
                 can_recv = p.can_recv()
-                for addr, dat, src in can_recv:
-                    if src == BUS_COMFORT:
-                        if addr == 0x470:
-                            decode_470_lock_status(dat)
-                        elif addr == 0x61A:
-                            decode_61A_soc(dat)
-                        elif addr == 0x52D:
-                            decode_52D_range(dat)
-                        elif addr == 0x527:
-                            decode_527_temp(dat)
-                        elif addr == 0x658:
-                            decode_658_odometer(dat)
-                        elif addr == 0x61C:
-                            decode_61C_charge_status(dat)
+                for addr, dat, _ in can_recv:
+                    if addr == 0x470:
+                        decode_470_lock_status(dat)
+                    elif addr == 0x61A:
+                        decode_61A_soc(dat)
+                    elif addr == 0x52D:
+                        decode_52D_range(dat)
+                    elif addr == 0x527:
+                        decode_527_temp(dat)
+                    elif addr == 0x658:
+                        decode_658_odometer(dat)
+                    elif addr == 0x61C:
+                        decode_61C_charge_status(dat)
 
                 i += 1
                 time.sleep(0.05)
