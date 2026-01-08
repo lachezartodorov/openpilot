@@ -21,6 +21,7 @@ logging.basicConfig(
 
 dashboard = {
     "soc": -1,
+    "soc2": -1,
     "range": -1,
     "charging": "-",
     "plugged_in": "-",
@@ -47,8 +48,10 @@ def decode_470_lock_status(data):
 def decode_61A_soc(data):
     # ID: 0x61A (Ladegeraet_1)
     # Based on VW PQ DBC: Byte 0 * 0.5 = SOC %
+    if len(data) >= 8:
+        dashboard["soc"] = data[7] / 2.0
     if len(data) >= 1:
-        dashboard["soc"] = data[0] * 0.5
+        dashboard["soc2"] = data[0] * 0.5
 
 def decode_52D_range(data):
     # ID: 0x52D (Range)
@@ -92,8 +95,8 @@ def main():
                 continue
 
             i = 0
-            # Sample for ~3 seconds to catch all messages
-            while i < 300:
+            # Sample for ~20 seconds to catch all messages
+            while i < 400:
                 can_recv = p.can_recv()
                 for addr, dat, src in can_recv:
                     if src == BUS_COMFORT:
@@ -111,7 +114,7 @@ def main():
                             decode_61C_charge_status(dat)
 
                 i += 1
-                time.sleep(0.01)
+                time.sleep(0.05)
 
             # Get 12V Battery Voltage from Panda health
             try:
