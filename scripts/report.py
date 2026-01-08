@@ -82,15 +82,17 @@ def decode_61C_charge_status(data):
         dashboard["charging"] = "Yes" if dashboard["plugged_in"] == "Yes" and data[2] < 7 else "No"
 
 def main():
-    logging.info("Reporting script started with full decoder set.")
+    logging.info("Reporting script started with full decoder set. Sleeping for 10 sec")
+    time.sleep(10)
+    logging.info("Awake and starting work")
     try:
         while True:
             try:
                 p = Panda()
                 p.set_safety_mode(Panda.SAFETY_SILENT)
             except Exception as e:
-                logging.error(f"Panda connection failed: {e}. Retrying in 30s...")
-                time.sleep(30)
+                logging.error(f"Panda connection failed: {e}. Retrying in 10s...")
+                time.sleep(10)
                 continue
 
             i = 0
