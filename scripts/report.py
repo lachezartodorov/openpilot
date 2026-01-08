@@ -95,7 +95,7 @@ def main():
             # Sample for ~3 seconds to catch all messages
             while i < 300:
                 can_recv = p.can_recv()
-                for addr, _, dat, src in can_recv:
+                for addr, dat, src in can_recv:
                     if src == BUS_COMFORT:
                         if addr == 0x470:
                             decode_470_lock_status(dat)
