@@ -133,16 +133,16 @@ def main():
 
             try:
                 with urllib.request.urlopen(req, timeout=10) as resp:
-                    logging.info(f"Sent: SOC={dashboard['soc']}%, Range={dashboard['range']}km, Doors={dashboard['doors']}, Temp={dashboard['temp']}C")
+                    logging.info(dashboard)
             except Exception as e:
                 logging.error(f"Post failed: {e}")
 
             # Close panda to allow other processes if necessary, then sleep
             p.close()
 
-            # Wait 5 minutes before next update to save 12V battery
-            logging.info("Sleeping for 5 minutes...")
-            time.sleep(300)
+            # Wait 2 minutes before next update to save 12V battery
+            logging.info("Sleeping for 2 minutes...")
+            time.sleep(120)
 
     except KeyboardInterrupt:
         logging.info("Stopped by user.")
