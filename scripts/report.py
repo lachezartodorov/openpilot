@@ -77,7 +77,8 @@ def decode_61C_charge_status(data):
         # 0xF0 = Unplugged, 0x03/0x04 = Connected
         dashboard["plugged_in"] = "Yes" if plug_byte < 0xF0 else "No"
         # Simple charging check
-        dashboard["charging"] = "Yes" if dashboard["plugged_in"] == "Yes" and data[2] > 0 else "No"
+        logging.info(f"Charging byte: {data[2]}")
+        dashboard["charging"] = "Yes" if dashboard["plugged_in"] == "Yes" and data[2] < 7 else "No"
 
 def main():
     logging.info("Reporting script started with full decoder set.")
