@@ -77,15 +77,14 @@ def decode_527_temp(data):
 def decode_658_odometer(data):
     # ID: 0x658 (Odometer)
     # Bytes 1, 2, and 3 form a 24-bit integer
-    logging.info("Odometer:")
-    logging.info(data)
     if len(data) >= 4:
         dashboard["odometer"] = (data[3] << 16) | (data[2] << 8) | data[1]
 
 def decode_61C_charge_status(data):
     # ID: 0x61C (Charger Status)
-    logging.info("Charging:")
-    logging.info(data)
+    # AC Charging b'\x00\x10\x02 \xfe\x07\x00\r'
+    # logging.info("Charging:")
+    # logging.info(data)
     if len(data) >= 3:
         plug_byte = data[1]
         # 0xF0 = Unplugged, 0x03/0x04 = Connected
