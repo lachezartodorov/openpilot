@@ -158,6 +158,7 @@ def main():
         logging.info("Stopped by user.")
     except Exception as e:
         logging.error(f"Fatal Error: {e}")
+        return 1
 
 if __name__ == "__main__":
     main()
