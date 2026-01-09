@@ -97,8 +97,9 @@ def main():
     logging.info("Reporting script started with full decoder set. Sleeping for 10 sec")
     time.sleep(10)
     logging.info("Awake and starting work")
-    try:
-        while True:
+    
+    while True:
+        try:
             try:
                 p = Panda()
                 p.set_safety_mode(Panda.SAFETY_SILENT)
@@ -106,10 +107,10 @@ def main():
                 logging.error(f"Panda connection failed: {e}. Retrying in 10s...")
                 time.sleep(10)
                 continue
-
+    
             i = 0
             # Sample for ~20 seconds to catch all messages
-            while i < 400:
+            while i < 200:
                 can_recv = p.can_recv()
                 for addr, dat, _ in can_recv:
                     if addr == 0x470:
@@ -124,10 +125,10 @@ def main():
                         decode_658_odometer(dat)
                     elif addr == 0x61C:
                         decode_61C_charge_status(dat)
-
+    
                 i += 1
-                time.sleep(0.05)
-
+                time.sleep(0.1)
+    
             # Get 12V Battery Voltage from Panda health
             try:
                 h = p.health()
@@ -135,7 +136,7 @@ def main():
                 dashboard["battery"] = round(voltage, 2)
             except:
                 voltage = -1
-
+    
             # Prepare Telemetry
             url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
             payload = json.dumps(dashboard).encode("utf-8")
@@ -145,25 +146,26 @@ def main():
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-
+    
             try:
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     logging.info(dashboard)
             except Exception as e:
                 logging.error(f"Post failed: {e}")
-
+    
             # Close panda to allow other processes if necessary, then sleep
             p.close()
-
+    
             # Wait 2 minutes before next update to save 12V battery
-            logging.info("Sleeping for 2 minutes...")
-            time.sleep(120)
+            logging.info("Sleeping for 10 sec...")
+            time.sleep(10)
 
-    except KeyboardInterrupt:
-        logging.info("Stopped by user.")
-    except Exception as e:
-        logging.error(f"Fatal Error: {e}")
-        return 1
+        except KeyboardInterrupt:
+            logging.info("Stopped by user.")
+            return 0
+        except Exception as e:
+            logging.error(f"Fatal Error: {e}")
+            time.sleep(30)
 
 if __name__ == "__main__":
     main()
