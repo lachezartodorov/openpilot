@@ -69,17 +69,23 @@ def decode_52D_range(data):
 def decode_527_temp(data):
     # ID: 0x527 (Klima_1)
     # Typically Byte 5 is Ambient Temp: (Value * 0.5) - 40
+    loging.info("Klima data:")
+    loging.info(data)
     if len(data) >= 6:
         dashboard["temp"] = (data[5] * 0.5) - 40
 
 def decode_658_odometer(data):
     # ID: 0x658 (Odometer)
     # Bytes 1, 2, and 3 form a 24-bit integer
+    loging.info("Odometer:")
+    loging.info(data)
     if len(data) >= 4:
         dashboard["odometer"] = (data[3] << 16) | (data[2] << 8) | data[1]
 
 def decode_61C_charge_status(data):
     # ID: 0x61C (Charger Status)
+    loging.info("Charging:")
+    loging.info(data)
     if len(data) >= 3:
         plug_byte = data[1]
         # 0xF0 = Unplugged, 0x03/0x04 = Connected
