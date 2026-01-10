@@ -10,10 +10,9 @@ def main():
         print("[*] Initializing Panda...")
         p = Panda()
         p.set_can_speed_kbps(TARGET_BUS, BUS_SPEED)
-        p.set_safety_mode(Panda.SAFETY_ALLOUTPUT) # Needed to keep car awake
+        p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
 
-        # Store "noisy" bits: {ID: [True, False, False, ...]}
-        # True means "this byte is noise", False means "this byte is signal"
+        # Store "noisy" bits: {ID: [True, False, ...]}
         noise_mask = {}
         last_data = {}
 
@@ -26,33 +25,37 @@ def main():
             for addr, dat, bus in incoming:
                 if bus != TARGET_BUS: continue
 
-                # Convert bytearray to list of integers for easier comparison
                 current_bytes = list(dat)
 
                 if addr not in last_data:
                     last_data[addr] = current_bytes
-                    # Initialize mask: assume all bytes are signal (False) initially
                     noise_mask[addr] = [False] * len(dat)
                 else:
-                    # Compare with previous packet
+                    # FIX: Handle variable packet lengths
+                    # 1. Extend noise_mask if current packet is longer
+                    if len(current_bytes) > len(noise_mask[addr]):
+                        extend_len = len(current_bytes) - len(noise_mask[addr])
+                        noise_mask[addr].extend([False] * extend_len)
+
+                    # 2. Compare bytes (safely iterating up to the length of the shorter packet)
                     prev_bytes = last_data[addr]
-                    if len(prev_bytes) == len(current_bytes):
-                        for i in range(len(current_bytes)):
-                            if current_bytes[i] != prev_bytes[i]:
-                                # If it changed while user did nothing, it's NOISE.
-                                noise_mask[addr][i] = True
+                    min_len = min(len(current_bytes), len(prev_bytes))
+
+                    for i in range(min_len):
+                        if current_bytes[i] != prev_bytes[i]:
+                            noise_mask[addr][i] = True
 
                     last_data[addr] = current_bytes
 
-            # Print a dot every second to show progress
-            if int(time.time()) > int(start_time):
+            # Print a dot to show aliveness
+            if int(time.time() * 10) % 10 == 0:
                 print(".", end="", flush=True)
-                start_time += 0.1 # slight cheat to not flood print
+                time.sleep(0.1)
 
         print("\n\n--- PHASE 2: DETECTION (NOW turn the Knob!) ---")
-        print("    Ignoring counters/checksums. Waiting for real changes...")
+        print("    Ignoring background noise. Turn the temp knob to see signal...")
 
-        # Clear recent history so we catch the first turn
+        # Reset last_data to ensure we catch the immediate change
         last_data = {}
 
         while True:
@@ -62,43 +65,56 @@ def main():
 
                 current_bytes = list(dat)
 
-                # Skip IDs we didn't see during calibration (rare events)
+                # Skip IDs we haven't seen (or just initialize them blindly to avoid crash)
                 if addr not in noise_mask:
+                    noise_mask[addr] = [False] * len(dat)
+                    last_data[addr] = current_bytes
                     continue
+
+                # Ensure mask is long enough (safety catch for Phase 2)
+                if len(current_bytes) > len(noise_mask[addr]):
+                     noise_mask[addr].extend([False] * (len(current_bytes) - len(noise_mask[addr])))
 
                 if addr not in last_data:
                     last_data[addr] = current_bytes
                     continue
 
-                # Check for "Real" changes
                 prev_bytes = last_data[addr]
                 is_real_change = False
 
-                if len(prev_bytes) == len(current_bytes):
-                    for i in range(len(current_bytes)):
-                        # If byte changed AND it is NOT marked as noise
-                        if current_bytes[i] != prev_bytes[i] and not noise_mask[addr][i]:
-                            is_real_change = True
-                            # Highlight this byte in the print output
-                            # (We handle the print below)
+                # Compare
+                min_len = min(len(current_bytes), len(prev_bytes))
+
+                for i in range(min_len):
+                    # Check if byte changed AND is NOT noise
+                    if current_bytes[i] != prev_bytes[i] and not noise_mask[addr][i]:
+                        is_real_change = True
+                        break # Optimization: one real change is enough to trigger print
 
                 if is_real_change:
-                    # Construct a visual string
+                    # Build pretty string
                     hex_str = []
                     for i in range(len(current_bytes)):
-                        b_str = f"{current_bytes[i]:02x}"
-                        if current_bytes[i] != prev_bytes[i] and not noise_mask[addr][i]:
-                            # Highlight changed signal byte with []
-                            hex_str.append(f"[{b_str}]")
-                        elif noise_mask[addr][i]:
-                            # Dim out noise bytes (optional, or just print normal)
-                            hex_str.append(f"{b_str}")
+                        val = current_bytes[i]
+                        b_str = f"{val:02x}"
+
+                        # Logic to decorate the changed byte
+                        # We need to be careful with index bounds here too
+                        is_noise = noise_mask[addr][i] if i < len(noise_mask[addr]) else False
+                        was_diff = False
+                        if i < len(prev_bytes):
+                            if val != prev_bytes[i]:
+                                was_diff = True
+
+                        if was_diff and not is_noise:
+                            hex_str.append(f"[{b_str}]") # SIGNAL
+                        elif is_noise:
+                            hex_str.append(f"{b_str}")   # NOISE (plain)
                         else:
-                            hex_str.append(b_str)
+                            hex_str.append(b_str)        # STATIC
 
                     print(f" [!] CHANGE ID {hex(addr)}: {' '.join(hex_str)}")
 
-                    # Update comparison reference
                     last_data[addr] = current_bytes
 
             time.sleep(0.001)
@@ -106,6 +122,9 @@ def main():
     except KeyboardInterrupt:
         print("\n[*] Stopping...")
         p.set_safety_mode(Panda.SAFETY_SILENT)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()
