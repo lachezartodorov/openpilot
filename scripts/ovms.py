@@ -23,42 +23,34 @@ def decode_temp_knob(dat):
     return f"{raw/2.0:.1f} C"
 
 def decode_vin(dat):
-    # 0x5D2: 02 [44 39...] -> ASCII
     try: return dat[1:].decode('ascii', errors='ignore')
     except: return "..."
 
-def decode_odo_try1(dat):
-    # 0x520/0x621: Candidate A (Big Endian)
-    # [00 2d 77] -> 0x2D77 = 11639
-    if len(dat) < 4: return "Err"
-    val = (dat[1] << 8) + dat[2]
-    return f"{val} km?"
-
-def decode_odo_try2(dat):
-    # 0x520/0x621: Candidate B (Little Endian)
-    # [00 2d 77] -> 0x772D = 30509
-    if len(dat) < 4: return "Err"
-    val = (dat[2] << 8) + dat[1]
-    return f"{val} km?"
+def decode_odo_fixed(dat):
+    # ID 0x520, Bytes 5,6,7 (Little Endian)
+    # [.. .. .. .. .. 87 01 01] -> 0x10187 -> 65927
+    if len(dat) < 8: return "Err"
+    val = (dat[7] << 16) + (dat[6] << 8) + dat[5]
+    return f"{val} km"
 
 def decode_range(dat):
-    # 0x658 Byte 5: [60 28 00 09 00 9b ...] -> 9b = 155
+    # 0x658 Byte 5 is Rated Range
     if len(dat) < 6: return "Err"
-    return f"{dat[5]} km"
+    return f"{dat[5]} km (Std)"
 
 def decode_soc(dat):
-    # 0x62B Byte 4
     if len(dat) < 5: return "Err"
     return f"{dat[4]} %"
 
 def decode_handbrake(dat):
-    # 0x390 Byte 0 Bit 0
     if len(dat) < 1: return "Err"
-    return "ON" if (dat[0] & 1) else "OFF"
+    # 0x83 seems to be OFF.
+    return "OFF" if dat[0] == 0x83 else "ON?"
 
-def decode_out_temp(dat):
+def decode_out_temp_fixed(dat):
+    # ID 0x5DC, Formula: (Raw - 110) / 2
     if len(dat) < 1: return "Err"
-    return f"{(dat[0] - 100) / 2.0:.1f} C"
+    return f"{(dat[0] - 110) / 2.0:.1f} C"
 
 def decode_doors(dat):
     if len(dat) < 1: return "Err"
@@ -76,14 +68,12 @@ KNOWN_IDS = {
     0x52D: ("Climate Knob", decode_temp_knob),
     0x5D2: ("VIN (End)   ", decode_vin),
     0x62B: ("Battery SoC ", decode_soc),
-    0x658: ("Est. Range  ", decode_range),     # NEW
-    0x390: ("Handbrake   ", decode_handbrake), # NEW
-    0x5DC: ("Outdoor Temp", decode_out_temp),
+    0x658: ("Rated Range ", decode_range),
+    0x390: ("Handbrake   ", decode_handbrake),
+    0x5DC: ("Outdoor Temp", decode_out_temp_fixed), # FIXED
     0x380: ("Doors       ", decode_doors),
+    0x520: ("Odometer    ", decode_odo_fixed),      # FIXED
     0x320: ("Speedometer ", lambda d: f"{( ((d[4]<<8)+d[3]) -1)/190:.1f} km/h" if len(d)>4 else "Err"),
-    # Odometer Experiments
-    0x621: ("Odo (Guess A)", decode_odo_try1),
-    0x520: ("Odo (Guess B)", decode_odo_try2),
 }
 
 # --- GLOBAL STATE ---
