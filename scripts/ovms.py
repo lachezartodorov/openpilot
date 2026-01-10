@@ -22,6 +22,7 @@ current_temp = 21.0
 transition_active = False
 fas_counter = 0
 bus_awake = False      # Track if we see traffic
+last_traffic_time = 0
 
 def get_ac_command(enable=True, temp_c=21.0):
     cmd_byte = 0x80 if enable else 0x40
@@ -30,60 +31,65 @@ def get_ac_command(enable=True, temp_c=21.0):
 
 def perform_wakeup_handshake(p):
     """
-    Robust Handshake with Retries.
-    Returns True if bus activity is detected, False if failed.
+    Robust Handshake with Traffic Logging.
     """
+    global bus_awake, last_traffic_time
     print("\n[-] STARTING WAKE-UP SEQUENCE...")
 
     # Try up to 3 times to wake the car
     for attempt in range(1, 4):
         print(f" -> Attempt {attempt}/3: Sending Handshake...")
 
-        # 1. The Poke (0x69E, Len 2) - Wakes the Gateway
-        p.can_send(ID_POKE, b'\x14\x51', TARGET_BUS)
+        # 1. The Poke (0x69E)
+        try:
+            p.can_send(ID_POKE, b'\x14\x51', TARGET_BUS)
+        except Exception as e:
+            print(f"    [!] TX Error: {e}")
 
-        # SAFETY DELAY: Give Gateway 20ms to process the wake interrupt
-        time.sleep(0.02)
+        time.sleep(0.02) # SAFETY DELAY
 
-        # 2. The Self-Call (0x43D, Len 8) - "I am here"
+        # 2. The Self-Call (0x43D)
         msg_self = struct.pack("BBBBBBBB", 0x1D, 0x02, 0x02, 0x00, 0x00, 0x14, 0x00, 0x00)
         p.can_send(ID_RING, msg_self, TARGET_BUS)
 
-        # REQUIRED DELAY: OVMS uses 50ms. We use 0.06 to be safe with Python jitter.
-        time.sleep(0.06)
+        time.sleep(0.06) # REQUIRED DELAY
 
-        # 3. The Registration (0x43D, Len 8) - "Let me in"
+        # 3. The Registration (0x43D)
         msg_reg = struct.pack("BBBBBBBB", 0x00, 0x01, 0x02, 0x04, 0x00, 0x14, 0x00, 0x00)
         p.can_send(ID_RING, msg_reg, TARGET_BUS)
 
-        print("    Handshake sent. Listening for traffic...")
+        print("    Handshake sent. Listening for traffic (1.5s)...")
 
-        # 4. Verification: Listen for 1.5 seconds to see if the bus is alive
+        # 4. Verification & Logging
         start_wait = time.time()
-        traffic_seen = False
+        seen_ids = set()
 
         while time.time() - start_wait < 1.5:
             incoming = p.can_recv()
             for addr, _, bus in incoming:
                 if bus == TARGET_BUS:
-                    # If we see ANY ID other than our own sends, the bus is awake
-                    if addr not in [ID_POKE, ID_RING]:
-                        traffic_seen = True
-                        break
-            if traffic_seen:
-                break
+                    # Log every unique ID we see
+                    seen_ids.add(addr)
+                    # Update global traffic timer
+                    last_traffic_time = time.time()
 
-        if traffic_seen:
-            print(f" [V] SUCCESS: Bus traffic detected on attempt {attempt}.")
+        # Filter out our own TX IDs to see if *others* replied
+        rx_ids = [hex(x) for x in seen_ids if x not in [ID_POKE, ID_RING]]
+
+        if len(rx_ids) > 0:
+            print(f" [V] SUCCESS: Traffic detected on attempt {attempt}.")
+            print(f"     Ids Seen: {', '.join(rx_ids)}")
+            bus_awake = True
             return True
         else:
-            print(" [X] SILENCE: Bus is still sleeping.")
+            print(" [X] SILENCE: No response.")
 
     print(" [!] FAILED: Could not wake car after 3 attempts.")
+    bus_awake = False
     return False
 
 def connection_thread(p):
-    global ac_request, current_temp, fas_counter, transition_active, bus_awake
+    global ac_request, current_temp, fas_counter, transition_active, bus_awake, last_traffic_time
 
     last_tick = 0
 
@@ -93,34 +99,40 @@ def connection_thread(p):
         current_time = time.time()
 
         # --- 1Hz HEARTBEAT (0x5A9 + 0x5A7) ---
+        # Only send if we think the bus is awake or we are forcing it
         if current_time - last_tick > 1.0:
             last_tick = current_time
 
-            # Only send heartbeat if we successfully woke the bus (or are trying to keep it)
+            # Update bus state based on recent traffic (timeout 2s)
+            if current_time - last_traffic_time < 2.0:
+                bus_awake = True
+            else:
+                bus_awake = False
+
+            # Keep sending heartbeat if awake to HOLD it awake
             if bus_awake:
-                # A. Send 0x5A9
                 try:
                     p.can_send(ID_HEARTBEAT_1, b'\x00'*8, TARGET_BUS)
-                except:
-                    pass
+                except: pass
 
-                # B. Manage Transition Logic
+                # Manage Transition Logic
                 if transition_active:
                     fas_counter += 1
                     if fas_counter >= 10:
                         transition_active = False
                         fas_counter = 0
 
-                # C. Send 0x5A7
                 b0 = 0x60 if transition_active else 0x00
                 msg_5a7 = struct.pack("BBBBBBBB", b0, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
                 try:
                     p.can_send(ID_HEARTBEAT_2, msg_5a7, TARGET_BUS)
-                except:
-                    pass
+                except: pass
 
         # --- COMMAND HANDLING ---
         if ac_request is not None:
+            if not bus_awake:
+                print(" [!] WARNING: Sending command while bus is sleeping...")
+
             transition_active = True
             fas_counter = 0
 
@@ -137,10 +149,12 @@ def connection_thread(p):
                 time.sleep(0.1)
             ac_request = None
 
-        # --- READ TEMP & CHECK BUS ALIVE ---
+        # --- READ TEMP & TRAFFIC MONITOR ---
         incoming = p.can_recv()
         for addr, dat, bus in incoming:
             if bus == TARGET_BUS:
+                last_traffic_time = current_time # Update watchdog
+
                 if addr == ID_KNOB_READ and len(dat) >= 5:
                     val = dat[4] / 2.0
                     if val > 0: current_temp = val
@@ -159,42 +173,44 @@ def main():
         print(f"[!] Error: {e}")
         return
 
-    # 1. Execute Robust Handshake
-    success = perform_wakeup_handshake(p)
+    # 1. Initial Wake Up
+    perform_wakeup_handshake(p)
 
-    if success:
-        bus_awake = True
-        # 2. Start Background Thread
-        t = threading.Thread(target=connection_thread, args=(p,))
-        t.start()
+    # 2. Start Background Thread
+    t = threading.Thread(target=connection_thread, args=(p,))
+    t.start()
 
-        print("\n--- CONTROL INTERFACE ---")
-        print(" 1 : Turn AC ON")
-        print(" 0 : Turn AC OFF")
-        print(" q : Quit")
-        print("-------------------------")
+    print("\n--- CONTROL INTERFACE ---")
+    print(" 1 : Turn AC ON")
+    print(" 0 : Turn AC OFF")
+    print(" w : Retry Wake-Up Handshake")
+    print(" q : Quit")
+    print("-------------------------")
 
-        try:
-            while True:
-                print(f"\r [Status] Knob Temp: {current_temp:.1f}°C ", end="")
-                user_input = input().strip().lower()
+    try:
+        while True:
+            # Live Status Line
+            status = "ACTIVE" if bus_awake else "SLEEP "
+            print(f"\r [Bus: {status}] Knob Temp: {current_temp:.1f}°C ", end="")
 
-                if user_input == '1':
-                    ac_request = "START"
-                elif user_input == '0':
-                    ac_request = "STOP"
-                elif user_input == 'q':
-                    break
-        except KeyboardInterrupt:
-            pass
-        finally:
-            keep_running = False
-            t.join()
-    else:
-        print("[!] Exiting because wake-up failed.")
+            user_input = input().strip().lower()
 
-    p.set_safety_mode(Panda.SAFETY_SILENT)
-    print("\n[*] Exited.")
+            if user_input == '1':
+                ac_request = "START"
+            elif user_input == '0':
+                ac_request = "STOP"
+            elif user_input == 'w':
+                # Manual Trigger
+                perform_wakeup_handshake(p)
+            elif user_input == 'q':
+                break
+    except KeyboardInterrupt:
+        pass
+    finally:
+        keep_running = False
+        t.join()
+        p.set_safety_mode(Panda.SAFETY_SILENT)
+        print("\n[*] Exited.")
 
 if __name__ == "__main__":
     main()
