@@ -4,8 +4,8 @@ import threading
 from panda import Panda
 
 # --- CONFIGURATION ---
-TARGET_BUS = 1         # 0=CAN1, 1=CAN2 (Comfort CAN)
-BUS_SPEED  = 100       # 100kbps
+TARGET_BUS = 0         # 0=CAN1, 1=CAN2 (Comfort CAN)
+BUS_SPEED  = 500       # 100kbps
 
 # --- IDs ---
 ID_POKE       = 0x69E  # Wakeup Poke
