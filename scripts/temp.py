@@ -1,7 +1,6 @@
 import time
 import struct
 import threading
-import sys
 from datetime import datetime
 from panda import Panda
 
@@ -10,14 +9,14 @@ TARGET_BUS = 0         # 0=CAN1, 1=CAN2 (Comfort CAN)
 BUS_SPEED  = 500       # 100kbps
 
 # IDs
-WAKE_ID    = 0x69D     # OCU Heartbeat (Keeps bus awake)
-CMD_ID     = 0x69E     # Remote AC Command (Start/Stop)
-READ_ID    = 0x52D     # Manual Temp Knob Feedback (Found via Sniffer)
+WAKE_ID    = 0x69D     # OCU Heartbeat
+CMD_ID     = 0x69E     # Remote AC Command
+READ_ID    = 0x52D     # Manual Temp Knob (Corrected from Sniffer)
 
-# Global flags
+# Global State
 keep_running = True
-ac_request   = None    # None, "START", or "STOP"
-current_temp_display = 0.0 # To store the last read temp
+ac_request   = None
+current_temp_display = 21.0 # Default starting value
 
 def get_wake_message():
     """Generates the OCU Heartbeat"""
@@ -33,7 +32,7 @@ def get_climate_command(enable=True, temp_c=21.0):
     return struct.pack("BBBBBBBB", cmd_byte, 0x04, temp_raw, 0x00, 0x00, 0x00, 0x00, 0x00)
 
 def connection_thread(p):
-    """Background thread to handle Heartbeats, Commands, and Reading"""
+    """Background thread for Communication"""
     global ac_request, current_temp_display
 
     last_wake = 0
@@ -49,34 +48,36 @@ def connection_thread(p):
             try:
                 p.can_send(WAKE_ID, get_wake_message(), TARGET_BUS)
                 last_wake = current_time
-            except Exception:
-                pass # Ignore occasional TX errors
+            except:
+                pass
 
-        # 2. READ TEMP (0x52D)
-        # We peek at the buffer here to update the global variable
+        # 2. READ TEMP from 0x52D
         incoming = p.can_recv()
         for addr, dat, bus in incoming:
             if bus == TARGET_BUS and addr == READ_ID:
-                # Based on your sniffer: 0x52D, Byte 4 is the temp
+                # Log shows 0x52D has 8 bytes. Byte 4 is the temp.
+                # Example: 8d 40 00 00 [2b] 00 00 10
                 if len(dat) >= 5:
-                    raw_val = dat[4]
-                    current_temp_display = raw_val / 2.0
+                    raw_val = dat[4] # Index 4 is the 5th byte
+                    # Filter out zero/invalid readings if necessary
+                    if raw_val > 0:
+                        current_temp_display = raw_val / 2.0
 
-        # 3. HANDLE AC REQUESTS (Burst send)
+        # 3. HANDLE AC REQUESTS
         if ac_request == "START":
-            # Use the currently set manual temp as the target, or default to 21
-            target = current_temp_display if current_temp_display > 10 else 21.0
-            print(f" -> TX: Sending AC ON (Target: {target}°C)...")
+            # Use the manual knob setting as the target temp
+            target = current_temp_display if current_temp_display > 15 else 21.0
+            print(f" -> TX: AC ON (Target: {target}°C)...")
 
             cmd = get_climate_command(enable=True, temp_c=target)
-            for _ in range(5): # Burst 5 times
+            for _ in range(5):
                 p.can_send(CMD_ID, cmd, TARGET_BUS)
                 time.sleep(0.1)
             ac_request = None
 
         elif ac_request == "STOP":
-            print(" -> TX: Sending AC OFF...")
-            cmd = get_climate_command(enable=False, temp_c=21.0) # Temp doesn't matter for OFF
+            print(" -> TX: AC OFF...")
+            cmd = get_climate_command(enable=False, temp_c=21.0)
             for _ in range(5):
                 p.can_send(CMD_ID, cmd, TARGET_BUS)
                 time.sleep(0.1)
@@ -100,22 +101,18 @@ def main():
     t.start()
 
     print("\n--- CONTROLS ---")
-    print(" 1 : Turn AC ON")
+    print(" 1 : Turn AC ON (Uses Dashboard Temp)")
     print(" 0 : Turn AC OFF")
     print(" q : Quit")
     print("----------------")
-    print("Waiting for temp data...")
 
     try:
         while True:
-            # Simple UI Loop
-            # We use input() which blocks, so the update only happens after you press Enter
-            # In a real app, this would be non-blocking.
+            # Display current temp reading constantly
+            print(f"\r [Status] Knob Temp: {current_temp_display:.1f}°C   ", end="")
 
-            # Print status before asking for input
-            print(f"\r [Status] Dashboard Setpoint: {current_temp_display:.1f}°C ", end="")
-
-            user_input = input("\n Cmd > ").strip().lower()
+            # Blocking input (press Enter to send command)
+            user_input = input().strip().lower()
 
             if user_input == '1':
                 ac_request = "START"
