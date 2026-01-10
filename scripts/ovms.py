@@ -5,8 +5,8 @@ import curses
 from panda import Panda
 
 # --- CONFIGURATION ---
-TARGET_BUS = 0         # 0=CAN1, 1=CAN2
-BUS_SPEED  = 500       # 100kbps
+TARGET_BUS = 1         # 0=CAN1, 1=CAN2
+BUS_SPEED  = 100       # 100kbps
 
 # --- IDs ---
 ID_POKE       = 0x69E
@@ -19,51 +19,71 @@ ID_AC_CMD     = 0x69E
 def decode_temp_knob(dat):
     if len(dat) < 5: return "Err"
     raw = dat[4]
-    if raw == 0xFF: return "N/A (Off)" # Fix for 127.5C
+    if raw == 0xFF or raw == 0xFE: return "N/A (Off)"
     return f"{raw/2.0:.1f} C"
 
 def decode_vin(dat):
-    # 0x5D2: 02 [44 39 30 34 38 37 36] -> ASCII
-    try:
-        return dat[1:].decode('ascii', errors='ignore')
+    # 0x5D2: 02 [44 39...] -> ASCII
+    try: return dat[1:].decode('ascii', errors='ignore')
     except: return "..."
 
-def decode_odo(dat):
-    # 0x420: xx [6a 6b 00] ... Little Endian
+def decode_odo_try1(dat):
+    # 0x520/0x621: Candidate A (Big Endian)
+    # [00 2d 77] -> 0x2D77 = 11639
     if len(dat) < 4: return "Err"
-    val = (dat[3] << 16) + (dat[2] << 8) + dat[1]
-    return f"{val} km"
+    val = (dat[1] << 8) + dat[2]
+    return f"{val} km?"
+
+def decode_odo_try2(dat):
+    # 0x520/0x621: Candidate B (Little Endian)
+    # [00 2d 77] -> 0x772D = 30509
+    if len(dat) < 4: return "Err"
+    val = (dat[2] << 8) + dat[1]
+    return f"{val} km?"
+
+def decode_range(dat):
+    # 0x658 Byte 5: [60 28 00 09 00 9b ...] -> 9b = 155
+    if len(dat) < 6: return "Err"
+    return f"{dat[5]} km"
 
 def decode_soc(dat):
-    # 0x62B: ... ... ... ... [4c] ...
+    # 0x62B Byte 4
     if len(dat) < 5: return "Err"
     return f"{dat[4]} %"
 
+def decode_handbrake(dat):
+    # 0x390 Byte 0 Bit 0
+    if len(dat) < 1: return "Err"
+    return "ON" if (dat[0] & 1) else "OFF"
+
 def decode_out_temp(dat):
-    # 0x5DC: [75] ... -> (117 - 100) / 2
     if len(dat) < 1: return "Err"
     return f"{(dat[0] - 100) / 2.0:.1f} C"
 
 def decode_doors(dat):
     if len(dat) < 1: return "Err"
     val = dat[0]
-    status = []
-    if val & 0x01: status.append("FL")
-    if val & 0x02: status.append("FR")
-    if val & 0x04: status.append("RL")
-    if val & 0x08: status.append("RR")
-    if val & 0x10: status.append("Trunk")
-    return " ".join(status) if status else "All Closed"
+    doors = []
+    if val & 0x01: doors.append("FL")
+    if val & 0x02: doors.append("FR")
+    if val & 0x04: doors.append("RL")
+    if val & 0x08: doors.append("RR")
+    if val & 0x10: doors.append("Trunk")
+    return " ".join(doors) if doors else "All Closed"
 
 # --- MAPPING ---
 KNOWN_IDS = {
     0x52D: ("Climate Knob", decode_temp_knob),
     0x5D2: ("VIN (End)   ", decode_vin),
-    0x420: ("Odometer    ", decode_odo),
     0x62B: ("Battery SoC ", decode_soc),
+    0x658: ("Est. Range  ", decode_range),     # NEW
+    0x390: ("Handbrake   ", decode_handbrake), # NEW
     0x5DC: ("Outdoor Temp", decode_out_temp),
     0x380: ("Doors       ", decode_doors),
     0x320: ("Speedometer ", lambda d: f"{( ((d[4]<<8)+d[3]) -1)/190:.1f} km/h" if len(d)>4 else "Err"),
+    # Odometer Experiments
+    0x621: ("Odo (Guess A)", decode_odo_try1),
+    0x520: ("Odo (Guess B)", decode_odo_try2),
 }
 
 # --- GLOBAL STATE ---
@@ -123,7 +143,7 @@ def bg_worker(p):
             with data_lock:
                 if 0x52D in data_store and len(data_store[0x52D]['data']) > 4:
                     val = data_store[0x52D]['data'][4]
-                    if val != 0xFF: target = val / 2.0
+                    if val != 0xFF and val != 0xFE: target = val / 2.0
 
             if target < 15: target = 21.0
 
