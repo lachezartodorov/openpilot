@@ -52,7 +52,7 @@ def decode_470_lock_status(data):
             dashboard["doors"] = "Back Right Door"
         else:
             dashboard["doors"] = "Something is Open"
-          
+
 def decode_61A_soc(data):
     # ID: 0x61A (Ladegeraet_1)
     # Based on VW PQ DBC: Byte 0 * 0.5 = SOC %
@@ -97,7 +97,7 @@ def main():
     logging.info("Reporting script started with full decoder set. Sleeping for 10 sec")
     time.sleep(10)
     logging.info("Awake and starting work")
-    
+
     while True:
         try:
             try:
@@ -107,7 +107,7 @@ def main():
                 logging.error(f"Panda connection failed: {e}. Retrying in 10s...")
                 time.sleep(10)
                 continue
-    
+
             i = 0
             # Sample for ~20 seconds to catch all messages
             while i < 200:
@@ -125,10 +125,10 @@ def main():
                         decode_658_odometer(dat)
                     elif addr == 0x61C:
                         decode_61C_charge_status(dat)
-    
+
                 i += 1
                 time.sleep(0.1)
-    
+
             # Get 12V Battery Voltage from Panda health
             try:
                 h = p.health()
@@ -136,7 +136,7 @@ def main():
                 dashboard["battery"] = round(voltage, 2)
             except:
                 voltage = -1
-    
+
             # Prepare Telemetry
             url = "https://demo.thingsboard.io/api/v1/PBMXSn7TRsCq57tkUAla/telemetry"
             payload = json.dumps(dashboard).encode("utf-8")
@@ -146,19 +146,19 @@ def main():
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-    
+
             try:
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     logging.info(dashboard)
             except Exception as e:
                 logging.error(f"Post failed: {e}")
-    
+
             # Close panda to allow other processes if necessary, then sleep
             p.close()
-    
+
             # Wait 2 minutes before next update to save 12V battery
-            logging.info("Sleeping for 10 sec...")
-            time.sleep(10)
+            logging.info("Sleeping for 300 sec...")
+            time.sleep(300)
 
         except KeyboardInterrupt:
             logging.info("Stopped by user.")
