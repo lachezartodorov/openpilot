@@ -852,18 +852,14 @@ def main():
     bus_speed = args.speed
 
     print(f"[*] OMEGA - VW e-UP! Remote Control Tool")
-    print(f"[*] Write Bus: {write_bus}, Speed: {bus_speed}kbps")
     print(f"[*] Connecting to Panda...")
 
     try:
         p = Panda()
 
-        # Set bus speed for all buses
-        for bus in [0, 1, 2]:
-            try:
-                p.set_can_speed_kbps(bus, bus_speed)
-            except:
-                pass
+        p.set_can_speed_kbps(0, 500)
+        p.set_can_speed_kbps(1, 100)
+        p.set_can_speed_kbps(2, 100)
 
         # Enable all output for commands
         p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
